@@ -1,0 +1,63 @@
+name: neighbour_hub
+description: "NeighbourHub - Your Neighbourhood Community App"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Icons ---
+  cupertino_icons: ^1.0.8
+
+  # --- Firebase Core (always needed first) ---
+  firebase_core: ^3.13.1
+
+  # --- Firebase Authentication (login/register) ---
+  firebase_auth: ^5.5.2
+
+  # --- Firestore Database (store posts, users, etc.) ---
+  cloud_firestore: ^5.6.6
+
+  # --- Firebase Storage (for uploading images) ---
+  firebase_storage: ^12.4.5
+
+  # --- Google Sign-In (only for authentication, NOT Gmail) ---
+  google_sign_in: ^6.2.2
+
+  # --- State Management (Provider - simple and beginner-friendly) ---
+  provider: ^6.1.2
+
+  # --- Image Picker (choose photo from gallery or camera) ---
+  image_picker: ^1.1.2
+
+  # --- Efficient image loading from network with caching ---
+  cached_network_image: ^3.4.1
+
+  # --- "2 hours ago" style time formatting ---
+  timeago: ^3.7.0
+
+  # --- Generate unique IDs for posts, etc. ---
+  uuid: ^4.5.1
+
+  # --- Store local settings like dark mode preference ---
+  shared_preferences: ^2.3.5
+
+  # --- Simple, elegant animations ---
+  flutter_animate: ^4.5.2
+
+  # --- Google Fonts (clean, modern typography) ---
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  # Assets will be added in later stages
