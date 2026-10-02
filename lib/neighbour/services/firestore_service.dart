@@ -322,14 +322,132 @@ class FirestoreService {
 
   // ─── Lost & Found Operations ──────────────────────────────────────────────
 
-  Stream<List<LostFoundModel>> getLostFoundItemsStream() async* {
-    yield _lostFound;
-    yield* _lostFoundController.stream;
+  Stream<List<LostFoundModel>> getLostFoundItemsStream() {
+    return _db
+        .collection('lost_found')
+        .snapshots()
+        .map((snap) {
+      final items = snap.docs
+          .map((doc) => LostFoundModel.fromMap(doc.data(), doc.id))
+          .toList();
+      items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return items;
+    });
   }
 
   Future<void> createLostFoundItem(LostFoundModel item) async {
-    _lostFound.add(item);
-    _lostFoundController.add(List.from(_lostFound));
+    await _db.collection('lost_found').doc(item.id).set(item.toMap());
+  }
+
+  Future<void> updateLostFoundStatus(String itemId, String newStatus) async {
+    await _db.collection('lost_found').doc(itemId).update({'status': newStatus, 'isResolved': newStatus == 'Returned' || newStatus == 'Closed'});
+  }
+
+  /// Submit a claim or "I Found This" response on a Lost & Found item.
+  Future<void> submitClaim({
+    required String itemId,
+    required String itemTitle,
+    required String itemOwnerId,
+    required String claimantId,
+    required String claimantName,
+    required String claimLocation,
+    required String claimDescription,
+    required String claimType, // 'claim' for Found items, 'found_tip' for Lost items
+  }) async {
+    final batch = _db.batch();
+
+    // Write the claim document
+    final claimRef = _db.collection('lost_found_claims').doc();
+    batch.set(claimRef, {
+      'itemId': itemId,
+      'itemTitle': itemTitle,
+      'itemOwnerId': itemOwnerId,
+      'claimantId': claimantId,
+      'claimantName': claimantName,
+      'claimLocation': claimLocation,
+      'claimDescription': claimDescription,
+      'claimType': claimType,
+      'status': 'pending', // pending | accepted | rejected
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Mark the item as ClaimPending
+    final itemRef = _db.collection('lost_found').doc(itemId);
+    batch.update(itemRef, {'status': 'ClaimPending', 'isResolved': false});
+
+    // Notify the item owner
+    final notifRef = _db.collection('notifications').doc();
+    final isFoundTip = claimType == 'found_tip';
+    batch.set(notifRef, {
+      'userId': itemOwnerId,
+      'title': isFoundTip ? 'Someone May Have Found Your Item!' : 'New Claim on Your Found Item',
+      'message': isFoundTip
+          ? '$claimantName says they may have found your lost item: "$itemTitle". Tap to review.'
+          : '$claimantName has submitted a claim for your found item: "$itemTitle". Tap to review.',
+      'type': 'lostFoundClaim',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'claimId': claimRef.id,
+      'itemId': itemId,
+    });
+
+    await batch.commit();
+  }
+
+  /// Owner accepts a claim — marks item Returned, notifies claimant.
+  Future<void> acceptClaim({
+    required String claimId,
+    required String itemId,
+    required String itemTitle,
+    required String claimantId,
+  }) async {
+    final batch = _db.batch();
+    batch.update(_db.collection('lost_found_claims').doc(claimId), {'status': 'accepted'});
+    batch.update(_db.collection('lost_found').doc(itemId), {'status': 'Returned', 'isResolved': true});
+    final notifRef = _db.collection('notifications').doc();
+    batch.set(notifRef, {
+      'userId': claimantId,
+      'title': 'Claim Accepted! 🎉',
+      'message': 'Your claim for "$itemTitle" was accepted. Please coordinate with the owner.',
+      'type': 'lostFoundClaim',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'itemId': itemId,
+    });
+    await batch.commit();
+  }
+
+  /// Owner rejects a claim — resets item to Active, notifies claimant.
+  Future<void> rejectClaim({
+    required String claimId,
+    required String itemId,
+    required String itemTitle,
+    required String claimantId,
+  }) async {
+    final batch = _db.batch();
+    batch.update(_db.collection('lost_found_claims').doc(claimId), {'status': 'rejected'});
+    batch.update(_db.collection('lost_found').doc(itemId), {'status': 'Active'});
+    final notifRef = _db.collection('notifications').doc();
+    batch.set(notifRef, {
+      'userId': claimantId,
+      'title': 'Claim Not Accepted',
+      'message': 'Your claim for "$itemTitle" was not accepted. The item remains active.',
+      'type': 'lostFoundClaim',
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'itemId': itemId,
+    });
+    await batch.commit();
+  }
+
+  /// Get pending claims for a specific Lost & Found item (owner use only)
+  Stream<List<Map<String, dynamic>>> getClaimsForItem(String itemId) {
+    return _db
+        .collection('lost_found_claims')
+        .where('itemId', isEqualTo: itemId)
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
 
   // ─── Announcement Operations ──────────────────────────────────────────────

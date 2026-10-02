@@ -25,6 +25,28 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
     }
     
+    match /lost_found/{itemId} {
+      // Anyone logged in can read items
+      allow read: if request.auth != null;
+      // Anyone logged in can create an item as themselves
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.postedById;
+      // Only the poster can update status; others cannot tamper with it directly
+      allow update: if request.auth != null && request.auth.uid == resource.data.postedById;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.postedById;
+    }
+    
+    match /lost_found_claims/{claimId} {
+      // Item owner or claimant can read the claim
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.itemOwnerId ||
+        request.auth.uid == resource.data.claimantId
+      );
+      // Authenticated users can create a claim as themselves
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.claimantId;
+      // Only the item owner can update the claim status (accept/reject)
+      allow update: if request.auth != null && request.auth.uid == resource.data.itemOwnerId;
+    }
+    
     match /connectionRequests/{requestId} {
       allow read: if request.auth != null && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
       allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId && request.resource.data.senderId != request.resource.data.receiverId;

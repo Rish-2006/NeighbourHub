@@ -470,6 +470,7 @@ class _HomeFeedTabState extends State<_HomeFeedTab> {
                           (context, index) {
                             final post = posts[index];
                             return PostCard(
+                              key: ValueKey(post.id), // Stable key prevents AnimationController lifecycle crash on scroll
                               post: post,
                               currentUserId: currentUserId,
                               index: index,
