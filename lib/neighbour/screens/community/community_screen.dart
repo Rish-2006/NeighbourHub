@@ -202,33 +202,7 @@ class CommunityScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(delay: 500.ms),
 
-          // ── Local Services ────────────────────────────────────────────────
-          _SectionHeader(
-            icon: Icons.build_outlined,
-            title: 'Local Services',
-            onViewAll: null,
-          ).animate().fadeIn(delay: 550.ms),
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: const [
-                    _ServiceChip(icon: Icons.electrical_services, label: 'Electrician'),
-                    _ServiceChip(icon: Icons.plumbing, label: 'Plumber'),
-                    _ServiceChip(icon: Icons.cleaning_services, label: 'Cleaning'),
-                    _ServiceChip(icon: Icons.local_hospital, label: 'Medical'),
-                    _ServiceChip(icon: Icons.directions_car, label: 'Transport'),
-                    _ServiceChip(icon: Icons.home_repair_service, label: 'Carpenter'),
-                  ],
-                ),
-              ),
-            ),
-          ).animate().fadeIn(delay: 600.ms),
         ],
       ),
     );
