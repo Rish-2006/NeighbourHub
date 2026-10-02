@@ -13,6 +13,7 @@ import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 import 'my_issues_screen.dart';
 import 'my_posts_screen.dart';
+import 'flat_number_section.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -93,8 +94,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 16),
+
             // ── Avatar ──────────────────────────────────────────────────────
             Center(
               child: Stack(
@@ -242,6 +243,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ).animate().fadeIn(delay: 200.ms),
             
+            const SizedBox(height: 16),
+
+            // ── YOUR FLAT NUMBER ─────────────────────────────────────────────
+            FlatNumberSection(userId: _currentUser!.id),
+
             const SizedBox(height: 16),
             
             // ── Menu Items ──────────────────────────────────────────────────

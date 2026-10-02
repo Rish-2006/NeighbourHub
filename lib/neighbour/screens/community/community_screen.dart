@@ -3,16 +3,17 @@
 // Community hub screen with announcements, events preview, rules, services, safety info.
 
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../models/event_model.dart';
-import '../../models/announcement_model.dart';
 import '../../data/mock_data.dart';
 import '../../widgets/event_card.dart';
 import 'events_screen.dart';
 import 'announcements_screen.dart';
+import 'service_providers_screen.dart';
 import '../lost_found/lost_found_screen.dart';
 import '../help/help_screen.dart';
 
@@ -40,16 +41,23 @@ class CommunityScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(duration: 300.ms),
 
-          // Latest announcement (from mock data)
-          Builder(
-            builder: (context) {
-              final announcements = MockData.announcements;
-              if (announcements.isEmpty) return const SizedBox.shrink();
-              final a = announcements.first;
+          // Latest announcement — live from Firestore
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('announcements')
+                .orderBy('createdAt', descending: true)
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              final data =
+                  snapshot.data!.docs.first.data() as Map<String, dynamic>;
               return _AnnouncementPreviewCard(
-                title: a['title'] ?? '',
-                message: a['message'] ?? '',
-                postedBy: a['postedBy'] ?? 'Association Committee',
+                title: data['title'] as String? ?? '',
+                message: data['description'] as String? ?? '',
+                postedBy: data['createdBy'] as String? ?? 'Admin',
               ).animate().fadeIn(delay: 100.ms);
             },
           ),
@@ -409,8 +417,11 @@ class _ServiceChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$label directory coming soon!')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ServiceProvidersScreen(category: label),
+          ),
         );
       },
       child: Container(

@@ -1,18 +1,21 @@
 // lib/screens/community/announcements_screen.dart
 //
-// Full list of community announcements.
+// Full list of community announcements — loaded live from Firestore.
+// Admin creates via Admin Dashboard → Announcements.
+// All authenticated users can read.
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
-import 'package:timeago/timeago.dart' as timeago;
-import '../../models/announcement_model.dart';
-import '../../data/mock_data.dart';
-import '../../models/announcement_model.dart';
 import '../../theme/app_theme.dart';
 
 class AnnouncementsScreen extends StatelessWidget {
   const AnnouncementsScreen({super.key});
+
+  String _monthName(int m) => const [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][m];
 
   @override
   Widget build(BuildContext context) {
@@ -22,29 +25,74 @@ class AnnouncementsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Announcements'),
       ),
-      body: Builder(
-        builder: (context) {
-          final rawAnns = MockData.announcements;
-          if (rawAnns.isEmpty) {
-            return const Center(child: Text('No announcements available.'));
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('announcements')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          // ── Error ────────────────────────────────────────────────────────
+          if (snapshot.hasError) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wifi_off_rounded,
+                      size: 48, color: AppTheme.errorColor),
+                  SizedBox(height: 12),
+                  Text('Could not load announcements.',
+                      style: TextStyle(color: AppTheme.darkSubtext)),
+                ],
+              ),
+            );
           }
-          
-          final announcements = rawAnns.map((a) => AnnouncementModel(
-            id: 'mock',
-            title: a['title'] ?? '',
-            message: a['message'] ?? '',
-            postedBy: a['postedBy'] ?? 'Association Committee',
-            createdAt: DateTime.now(), // Display only requires a valid DateTime
-          )).toList();
 
+          // ── Loading ──────────────────────────────────────────────────────
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+
+          // ── Empty ────────────────────────────────────────────────────────
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.campaign_outlined,
+                      size: 64,
+                      color: AppTheme.darkSubtext.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No announcements available.',
+                    style: TextStyle(color: AppTheme.darkSubtext, fontSize: 15),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // ── List ─────────────────────────────────────────────────────────
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: announcements.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final a = announcements[index];
-              final dateStr = rawAnns[index]['date'] ?? 'Recently';
-              
+              final data = docs[index].data() as Map<String, dynamic>;
+              final title = data['title'] as String? ?? '';
+              final description = data['description'] as String? ?? '';
+              final createdBy = data['createdBy'] as String? ?? 'Admin';
+              final imageUrl = data['imageUrl'] as String? ?? '';
+
+              // Format date from Firestore Timestamp
+              String dateStr = 'Recently';
+              final ts = data['createdAt'];
+              if (ts is Timestamp) {
+                final dt = ts.toDate();
+                dateStr = '${dt.day} ${_monthName(dt.month)} ${dt.year}';
+              }
+
               return Card(
                 color: AppTheme.primaryColor.withValues(alpha: 0.05),
                 shape: RoundedRectangleBorder(
@@ -58,6 +106,23 @@ class AnnouncementsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Optional image
+                      if (imageUrl.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            imageUrl,
+                            height: 160,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Official badge
                       Row(
                         children: [
                           const Icon(Icons.campaign,
@@ -74,31 +139,37 @@ class AnnouncementsScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 10),
+
+                      // Title
                       Text(
-                        a.title,
+                        title,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 8),
+
+                      // Description
                       Text(
-                        a.message,
+                        description,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.5,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.75),
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Footer
                       Row(
                         children: [
                           const Icon(Icons.person_outline,
                               size: 14, color: AppTheme.grey600),
                           const SizedBox(width: 4),
                           Text(
-                            a.postedBy,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.grey600,
-                            ),
+                            createdBy,
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.grey600),
                           ),
                           const Spacer(),
                           const Icon(Icons.calendar_today_outlined,
@@ -106,9 +177,8 @@ class AnnouncementsScreen extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             dateStr,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.grey600,
-                            ),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.grey600),
                           ),
                         ],
                       ),
