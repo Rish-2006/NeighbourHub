@@ -19,32 +19,9 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<NotificationModel> _notifications = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNotifications();
-  }
-
-  Future<void> _loadNotifications() async {
-    final userId = context.read<AuthService>().currentUser?.uid ?? '';
-    final notifs = await context.read<FirestoreService>().getNotifications(userId);
-    if (mounted) {
-      setState(() {
-        _notifications = notifs;
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _markAllAsRead() async {
     final userId = context.read<AuthService>().currentUser?.uid ?? '';
     await context.read<FirestoreService>().markAllNotificationsRead(userId);
-    setState(() {
-      _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
-    });
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('All notifications marked as read')),
@@ -52,39 +29,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _markAsRead(int index) async {
-    if (_notifications[index].isRead) return;
-    final notifId = _notifications[index].id;
-    await context.read<FirestoreService>().markNotificationRead(notifId);
-    if (mounted) {
-      setState(() {
-        _notifications[index] = _notifications[index].copyWith(isRead: true);
-      });
-    }
+  Future<void> _markAsRead(NotificationModel notif) async {
+    if (notif.isRead) return;
+    await context.read<FirestoreService>().markNotificationRead(notif.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unreadCount = _notifications.where((n) => !n.isRead).length;
+    final userId = context.read<AuthService>().currentUser?.uid ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.primaryColor,
-              ),
-              child: const Text('Mark all read'),
-            ),
+          StreamBuilder<List<NotificationModel>>(
+            stream: context.read<FirestoreService>().getNotificationsStream(userId),
+            builder: (context, snapshot) {
+              final unreadCount = (snapshot.data ?? []).where((n) => !n.isRead).length;
+              if (unreadCount > 0) {
+                return TextButton(
+                  onPressed: _markAllAsRead,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                  ),
+                  child: const Text('Mark all read'),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _notifications.isEmpty
+      body: StreamBuilder<List<NotificationModel>>(
+        stream: context.read<FirestoreService>().getNotificationsStream(userId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final _notifications = snapshot.data ?? [];
+
+          return _notifications.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -104,19 +93,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ],
                   ),
                 )
-              : RefreshIndicator(
-                  onRefresh: _loadNotifications,
-                  child: ListView.separated(
-                    itemCount: _notifications.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      return NotificationCard(
-                        notification: _notifications[index],
-                        onTap: () => _markAsRead(index),
-                      ).animate().fadeIn(delay: (index * 50).ms);
-                    },
-                  ),
-                ),
+              : ListView.separated(
+                  itemCount: _notifications.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    return NotificationCard(
+                      notification: _notifications[index],
+                      onTap: () => _markAsRead(_notifications[index]),
+                    ).animate().fadeIn(delay: (index * 50).ms);
+                  },
+                );
+        },
+      ),
     );
   }
 }

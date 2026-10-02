@@ -11,6 +11,8 @@ import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
+import 'my_issues_screen.dart';
+import 'my_posts_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -248,9 +250,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   _ProfileMenuItem(
+                    icon: Icons.assignment_outlined,
+                    title: 'My Issue Status',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyIssuesScreen()),
+                      );
+                    },
+                  ).animate().fadeIn(delay: 200.ms),
+                  
+                  _ProfileMenuItem(
                     icon: Icons.article_outlined,
                     title: 'My Posts',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyPostsScreen()),
+                      );
+                    },
                   ).animate().fadeIn(delay: 250.ms),
                   
                   _ProfileMenuItem(

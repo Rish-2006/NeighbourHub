@@ -18,25 +18,28 @@ class ReportIssueScreen extends StatefulWidget {
 class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _titleController = TextEditingController();
 
-  String _selectedCategory = 'Street Light';
+  String _selectedCategory = 'Maintenance';
   bool _isSubmitting = false;
 
   final _categories = [
-    'Street Light',
-    'Garbage / Cleanliness',
-    'Water Supply',
-    'Road Damage',
-    'Noise Disturbance',
-    'Parking Issue',
+    'Maintenance',
+    'Electrical',
+    'Plumbing',
+    'Lift',
+    'Security',
+    'Parking',
+    'Cleaning',
+    'Noise',
+    'Amenities',
     'Other'
   ];
 
   @override
   void dispose() {
     _descController.dispose();
-    _locationController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -60,10 +63,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     try {
       await FirebaseFirestore.instance.collection('reports').add({
         'userId': user.uid,
-        'userEmail': user.email,
-        'title': _locationController.text.trim(), // Mapping location input to title
+        'userName': user.displayName ?? 'Unknown',
+        'userEmail': user.email ?? 'Unknown',
+        'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
         'category': _selectedCategory,
+        'imageUrl': '',
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -73,9 +78,9 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       setState(() => _isSubmitting = false);
 
       _descController.clear();
-      _locationController.clear();
+      _titleController.clear();
       setState(() {
-        _selectedCategory = 'Street Light';
+        _selectedCategory = 'Maintenance';
       });
 
       Navigator.pop(context);
@@ -189,7 +194,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               const SizedBox(height: 20),
 
               Text(
-                'Location',
+                'Issue Title',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -197,14 +202,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
               const SizedBox(height: 8),
 
               TextFormField(
-                controller: _locationController,
+                controller: _titleController,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. Near Block A entrance, opposite park...',
-                  prefixIcon: Icon(Icons.location_on_outlined),
+                  hintText: 'e.g. Water leakage near Block A',
+                  prefixIcon: Icon(Icons.title_outlined),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please provide the location';
+                    return 'Please provide a title';
                   }
                   return null;
                 },

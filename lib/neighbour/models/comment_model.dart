@@ -19,6 +19,16 @@ class CommentModel {
     required this.createdAt,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    try {
+      return (value as dynamic).toDate() as DateTime;
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   factory CommentModel.fromMap(Map<String, dynamic> map, String docId) {
     return CommentModel(
       id: docId,
@@ -27,9 +37,7 @@ class CommentModel {
       authorName: map['authorName'] as String? ?? 'Unknown',
       authorPhoto: map['authorPhoto'] as String? ?? '',
       text: map['text'] as String? ?? '',
-      createdAt: (map['createdAt'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
-          : DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']),
     );
   }
 

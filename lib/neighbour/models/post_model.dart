@@ -81,6 +81,21 @@ class PostModel {
     this.likedBy = const [],
   });
 
+  // Safely parses createdAt which may be stored as:
+  // - int (milliseconds since epoch) written by this app
+  // - Firestore Timestamp written by Firebase Console or server-side tools
+  // - null if the document was created without a timestamp
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    // Firestore Timestamp has a .toDate() method
+    try {
+      return (value as dynamic).toDate() as DateTime;
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   // Creates a PostModel from a Firestore document
   factory PostModel.fromMap(Map<String, dynamic> map, String docId) {
     return PostModel(
@@ -92,9 +107,7 @@ class PostModel {
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       imageUrl: map['imageUrl'] as String? ?? '',
-      createdAt: (map['createdAt'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
-          : DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']),
       likesCount: map['likesCount'] as int? ?? 0,
       commentsCount: map['commentsCount'] as int? ?? 0,
       likedBy: List<String>.from(map['likedBy'] as List? ?? []),

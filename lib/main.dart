@@ -21,6 +21,8 @@ import 'presentation/auth/screens/splash_screen.dart';
 import 'neighbour/screens/home/home_screen.dart';
 import 'neighbour/screens/safety/emergency_screen.dart';
 import 'neighbour/screens/safety/report_issue_screen.dart';
+import 'neighbour/constants.dart';
+import 'neighbour/screens/admin/admin_dashboard_screen.dart';
 
 import 'firebase_options.dart';
 
@@ -131,6 +133,11 @@ class AuthWrapper extends StatelessWidget {
             // appear in the Members list for other users, then show home.
             if (snapshot.hasData && snapshot.data != null) {
               final firebaseUser = snapshot.data!;
+              
+              if (firebaseUser.email == AppConstants.adminEmail) {
+                return const AdminDashboardScreen();
+              }
+
               final firestoreService = context.read<FirestoreService>();
               // Use merge:true so we don't overwrite custom fields like neighbourhood/bio
               final userModel = neighbour_model.UserModel(

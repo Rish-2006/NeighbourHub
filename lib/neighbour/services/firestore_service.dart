@@ -124,6 +124,23 @@ class FirestoreService {
             .toList());
   }
 
+  /// Returns a real-time stream of posts created by a specific user.
+  /// Results are sorted client-side to avoid requiring a Firestore composite index.
+  Stream<List<PostModel>> getUserPostsStream(String userId) {
+    return _db
+        .collection('posts')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      final posts = snapshot.docs
+          .map((doc) => PostModel.fromMap(doc.data(), doc.id))
+          .toList();
+      // Sort newest first in Dart — no composite index needed
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return posts;
+    });
+  }
+
   Future<void> createPost(PostModel post) async {
     await _db.collection('posts').doc(post.id).set(post.toMap()).timeout(
       const Duration(seconds: 10),
@@ -153,32 +170,35 @@ class FirestoreService {
 
   // ─── Comment Operations ───────────────────────────────────────────────────
 
-  Stream<List<CommentModel>> getCommentsStream(String postId) async* {
-    final postComments = _comments.where((c) => c.postId == postId).toList();
-    postComments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    yield postComments;
-    
-    yield* _commentsController.stream.map((allComments) {
-      final filtered = allComments.where((c) => c.postId == postId).toList();
-      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return filtered;
+  Stream<List<CommentModel>> getCommentsStream(String postId) {
+    return _db
+        .collection('comments')
+        .where('postId', isEqualTo: postId)
+        .snapshots()
+        .map((snapshot) {
+      final comments = snapshot.docs
+          .map((doc) => CommentModel.fromMap(doc.data(), doc.id))
+          .toList();
+      // Sort in Dart to avoid composite index requirement
+      comments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return comments;
     });
   }
 
   Future<void> addComment(CommentModel comment) async {
-    _comments.add(comment);
+    // Write comment to Firestore
+    final docRef = _db.collection('comments').doc(comment.id);
+    await docRef.set(comment.toMap());
     
     // Update post comments count in Firestore
-    final docRef = _db.collection('posts').doc(comment.postId);
-    final docSnap = await docRef.get();
-    if (docSnap.exists) {
-      final post = PostModel.fromMap(docSnap.data()!, docSnap.id);
-      await docRef.update({
+    final postRef = _db.collection('posts').doc(comment.postId);
+    final postSnap = await postRef.get();
+    if (postSnap.exists) {
+      final post = PostModel.fromMap(postSnap.data()!, postSnap.id);
+      await postRef.update({
         'commentsCount': post.commentsCount + 1,
       });
     }
-    
-    _notifyComments();
   }
 
   // ─── Event Operations ─────────────────────────────────────────────────────
@@ -216,8 +236,33 @@ class FirestoreService {
 
   // ─── Notification Operations ──────────────────────────────────────────────
 
+  Stream<List<NotificationModel>> getNotificationsStream(String userId) {
+    return _db
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      final firestoreNotifs = snapshot.docs
+          .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+          .toList();
+      final userNotifs = _notifications.where((n) => n.userId == userId).toList();
+      final allNotifs = [...userNotifs, ...firestoreNotifs];
+      allNotifs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return allNotifs;
+    });
+  }
+
   Future<List<NotificationModel>> getNotifications(String userId) async {
     final userNotifs = _notifications.where((n) => n.userId == userId).toList();
+    
+    try {
+      final snap = await _db.collection('notifications').where('userId', isEqualTo: userId).get();
+      final firestoreNotifs = snap.docs.map((d) => NotificationModel.fromMap(d.data(), d.id)).toList();
+      userNotifs.addAll(firestoreNotifs);
+    } catch (e) {
+      debugPrint('Error getting Firestore notifications: $e');
+    }
+
     userNotifs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return userNotifs;
   }
@@ -226,32 +271,34 @@ class FirestoreService {
     final index = _notifications.indexWhere((n) => n.id == notificationId);
     if (index >= 0) {
       final n = _notifications[index];
-      _notifications[index] = NotificationModel(
-        id: n.id,
-        userId: n.userId,
-        title: n.title,
-        message: n.message,
-        type: n.type,
-        isRead: true,
-        createdAt: n.createdAt,
-      );
+      _notifications[index] = n.copyWith(isRead: true);
+      return;
+    }
+    try {
+      await _db.collection('notifications').doc(notificationId).update({'isRead': true});
+    } catch (e) {
+      debugPrint('markNotificationRead error: $e');
     }
   }
 
   Future<void> markAllNotificationsRead(String userId) async {
     for (int i = 0; i < _notifications.length; i++) {
       if (_notifications[i].userId == userId) {
-        final n = _notifications[i];
-        _notifications[i] = NotificationModel(
-          id: n.id,
-          userId: n.userId,
-          title: n.title,
-          message: n.message,
-          type: n.type,
-          isRead: true,
-          createdAt: n.createdAt,
-        );
+        _notifications[i] = _notifications[i].copyWith(isRead: true);
       }
+    }
+    try {
+      final snap = await _db.collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('isRead', isEqualTo: false)
+          .get();
+      final batch = _db.batch();
+      for (var doc in snap.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('markAllNotificationsRead error: $e');
     }
   }
 

@@ -10,6 +10,7 @@ enum NotificationType {
   announcement,
   helpResponse,
   general,
+  issueStatus,
 }
 
 extension NotificationTypeExtension on NotificationType {
@@ -21,6 +22,7 @@ extension NotificationTypeExtension on NotificationType {
       case NotificationType.announcement: return 'announcement';
       case NotificationType.helpResponse: return 'helpResponse';
       case NotificationType.general:      return 'general';
+      case NotificationType.issueStatus:  return 'issueStatus';
     }
   }
 
@@ -31,6 +33,7 @@ extension NotificationTypeExtension on NotificationType {
       case 'event':        return NotificationType.event;
       case 'announcement': return NotificationType.announcement;
       case 'helpResponse': return NotificationType.helpResponse;
+      case 'issueStatus':  return NotificationType.issueStatus;
       default:             return NotificationType.general;
     }
   }
@@ -44,6 +47,7 @@ extension NotificationTypeExtension on NotificationType {
       case NotificationType.announcement: return '📢';
       case NotificationType.helpResponse: return '🤝';
       case NotificationType.general:      return '🔔';
+      case NotificationType.issueStatus:  return '📋';
     }
   }
 }
@@ -56,6 +60,8 @@ class NotificationModel {
   final NotificationType type;
   final bool isRead;      // Has the user seen this?
   final DateTime createdAt;
+  final String? reportId;
+  final String? status;
 
   const NotificationModel({
     required this.id,
@@ -65,6 +71,8 @@ class NotificationModel {
     required this.type,
     this.isRead = false,
     required this.createdAt,
+    this.reportId,
+    this.status,
   });
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -77,8 +85,12 @@ class NotificationModel {
           map['type'] as String? ?? 'general'),
       isRead: map['isRead'] as bool? ?? false,
       createdAt: (map['createdAt'] != null)
-          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
+          ? (map['createdAt'] is int 
+              ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int)
+              : (map['createdAt'] as dynamic).toDate())
           : DateTime.now(),
+      reportId: map['reportId'] as String?,
+      status: map['status'] as String?,
     );
   }
 
@@ -89,7 +101,9 @@ class NotificationModel {
       'message': message,
       'type': type.value,
       'isRead': isRead,
-      'createdAt': createdAt.millisecondsSinceEpoch,
+      'createdAt': createdAt.millisecondsSinceEpoch, // Or FieldValue.serverTimestamp() when creating
+      'reportId': reportId,
+      'status': status,
     };
   }
 
@@ -102,6 +116,8 @@ class NotificationModel {
       type: type,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt,
+      reportId: reportId,
+      status: status,
     );
   }
 }
