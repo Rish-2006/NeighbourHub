@@ -163,12 +163,19 @@ class AuthService extends ChangeNotifier {
   // ─── Sign Out ─────────────────────────────────────────────────────────────
   Future<void> signOut() async {
     try {
-      // Sign out from both Google and Firebase
-      await _googleSignIn.signOut();
+      // Sign out from Google (may fail if not logged in via Google)
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('Google Sign out error (ignored): $e');
+      }
+      
+      // Always sign out from Firebase
       await _auth.signOut();
       notifyListeners();
     } catch (e) {
-      debugPrint('Sign out error: $e');
+      debugPrint('Firebase Sign out error: $e');
+      throw Exception('Failed to sign out from Firebase: $e');
     }
   }
 

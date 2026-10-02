@@ -40,17 +40,16 @@ class CommunityScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(duration: 300.ms),
 
-          // Latest announcement via Firestore
-          StreamBuilder<List<AnnouncementModel>>(
-            stream: context.read<FirestoreService>().getAnnouncementsStream(),
-            builder: (context, snapshot) {
-              final announcements = snapshot.data ?? [];
+          // Latest announcement (from mock data)
+          Builder(
+            builder: (context) {
+              final announcements = MockData.announcements;
               if (announcements.isEmpty) return const SizedBox.shrink();
               final a = announcements.first;
               return _AnnouncementPreviewCard(
-                title: a.title,
-                message: a.message,
-                postedBy: a.postedBy,
+                title: a['title'] ?? '',
+                message: a['message'] ?? '',
+                postedBy: a['postedBy'] ?? 'Association Committee',
               ).animate().fadeIn(delay: 100.ms);
             },
           ),

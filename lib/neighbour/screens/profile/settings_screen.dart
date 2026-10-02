@@ -56,12 +56,20 @@ class SettingsScreen extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      // Sign out from Firebase Auth
-      await context.read<AuthService>().signOut();
-      // Navigate directly to login screen — clear entire stack
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true)
-            .pushNamedAndRemoveUntil('/auth', (route) => false);
+      try {
+        // Sign out from Firebase Auth
+        await context.read<AuthService>().signOut();
+        // Navigate directly to login screen — clear entire stack
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true)
+              .pushNamedAndRemoveUntil('/auth', (route) => false);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logout failed: $e')),
+          );
+        }
       }
     }
   }

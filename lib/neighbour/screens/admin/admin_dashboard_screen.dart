@@ -25,10 +25,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await context.read<AuthService>().signOut();
-              if (context.mounted) {
-                Navigator.of(context, rootNavigator: true)
-                    .pushNamedAndRemoveUntil('/auth', (route) => false);
+              try {
+                await context.read<AuthService>().signOut();
+                if (context.mounted) {
+                  Navigator.of(context, rootNavigator: true)
+                      .pushNamedAndRemoveUntil('/auth', (route) => false);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Logout failed: $e')),
+                  );
+                }
               }
             },
           ),

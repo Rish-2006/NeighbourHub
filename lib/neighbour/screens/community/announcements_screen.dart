@@ -7,7 +7,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../models/announcement_model.dart';
-import '../../services/firestore_service.dart';
+import '../../data/mock_data.dart';
+import '../../models/announcement_model.dart';
 import '../../theme/app_theme.dart';
 
 class AnnouncementsScreen extends StatelessWidget {
@@ -21,22 +22,29 @@ class AnnouncementsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Announcements'),
       ),
-      body: StreamBuilder<List<AnnouncementModel>>(
-        stream: context.read<FirestoreService>().getAnnouncementsStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+      body: Builder(
+        builder: (context) {
+          final rawAnns = MockData.announcements;
+          if (rawAnns.isEmpty) {
+            return const Center(child: Text('No announcements available.'));
           }
-          final announcements = snapshot.data ?? [];
-          if (announcements.isEmpty) {
-            return const Center(child: Text('No announcements yet.'));
-          }
+          
+          final announcements = rawAnns.map((a) => AnnouncementModel(
+            id: 'mock',
+            title: a['title'] ?? '',
+            message: a['message'] ?? '',
+            postedBy: a['postedBy'] ?? 'Association Committee',
+            createdAt: DateTime.now(), // Display only requires a valid DateTime
+          )).toList();
+
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: announcements.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final a = announcements[index];
+              final dateStr = rawAnns[index]['date'] ?? 'Recently';
+              
               return Card(
                 color: AppTheme.primaryColor.withValues(alpha: 0.05),
                 shape: RoundedRectangleBorder(
@@ -97,7 +105,7 @@ class AnnouncementsScreen extends StatelessWidget {
                               size: 14, color: AppTheme.grey600),
                           const SizedBox(width: 4),
                           Text(
-                            timeago.format(a.createdAt),
+                            dateStr,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: AppTheme.grey600,
                             ),
