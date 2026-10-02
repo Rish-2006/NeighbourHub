@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /posts/{postId} {
+      // Anyone logged in can read posts
+      allow read: if request.auth != null;
+      // Anyone logged in can create a post, as long as they set themselves as the userId
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Only the author can update the post contents.
+      // Other authenticated users can only update the engagement counters (likes/comments).
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedBy', 'commentsCount'])
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    
+    match /connectionRequests/{requestId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId && request.resource.data.senderId != request.resource.data.receiverId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.receiverId;
+    }
+    
+    match /connections/{connectionId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
+      allow create: if request.auth != null && (request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
+    }
+    
+    // Other collections fall back to default rules or block everything
+    match /{document=**} {
+      allow read, write: if request.auth != null; // Allowing other features (users, etc) to work if they use Firestore
+    }
+  }
+}

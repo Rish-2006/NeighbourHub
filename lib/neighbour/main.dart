@@ -4,23 +4,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider, Consumer, ChangeNotifierProvider;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'neighbour/theme/app_theme.dart';
-import 'neighbour/routes/app_routes.dart';
-import 'neighbour/services/auth_service.dart';
-import 'neighbour/services/firestore_service.dart';
-import 'neighbour/services/storage_service.dart';
-import 'neighbour/models/user_model.dart' as neighbour_model;
+import 'theme/app_theme.dart';
+import 'routes/app_routes.dart';
+import 'services/auth_service.dart';
+import 'services/firestore_service.dart';
+import 'services/storage_service.dart';
+import 'models/user_model.dart';
 
-import 'presentation/auth/screens/login_screen.dart';
-import 'presentation/auth/screens/splash_screen.dart';
-import 'neighbour/screens/home/home_screen.dart';
-import 'neighbour/screens/safety/emergency_screen.dart';
-import 'neighbour/screens/safety/report_issue_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/home/home_screen.dart';
+import 'screens/safety/emergency_screen.dart';
+import 'screens/safety/report_issue_screen.dart';
 
 import 'firebase_options.dart';
 
@@ -53,7 +50,7 @@ void main() async {
         Provider(create: (_) => FirestoreService()),
         Provider(create: (_) => StorageService()),
       ],
-      child: const ProviderScope(child: NeighbourHubApp()),
+      child: const NeighbourHubApp(),
     ),
   );
 }
@@ -88,15 +85,14 @@ class NeighbourHubApp extends StatelessWidget {
       title: 'NeighbourHub',
       debugShowCheckedModeBanner: false,
 
-      // Theme Configuration — Yellow × Black × White
-      themeMode: ThemeMode.dark,
+      // Theme Configuration
+      themeMode: themeController.themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
 
       // App Routing
-      home: const SplashScreen(),
+      home: const AuthWrapper(),
       routes: {
-        AppRoutes.auth: (context) => const AuthWrapper(),
         AppRoutes.login: (context) => const LoginScreen(),
         AppRoutes.main: (context) => const HomeScreen(),
         AppRoutes.emergency: (context) => const EmergencyScreen(),
@@ -117,7 +113,7 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, authService, _) {
-        return StreamBuilder<User?>(
+        return StreamBuilder(
           stream: authService.authStateChanges,
           builder: (context, snapshot) {
             // While checking auth state, show a loading spinner
@@ -133,7 +129,7 @@ class AuthWrapper extends StatelessWidget {
               final firebaseUser = snapshot.data!;
               final firestoreService = context.read<FirestoreService>();
               // Use merge:true so we don't overwrite custom fields like neighbourhood/bio
-              final userModel = neighbour_model.UserModel(
+              final userModel = UserModel(
                 id: firebaseUser.uid,
                 name: firebaseUser.displayName ?? 'Neighbour',
                 email: firebaseUser.email ?? '',
