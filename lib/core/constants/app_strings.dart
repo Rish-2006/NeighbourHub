@@ -1,11 +1,11 @@
 class AppStrings {
   AppStrings._();
 
-  static const String appName = 'SafeCircle';
+  static const String appName = 'NeighbourHub';
   static const String appTagline = 'Silent journey safety & disposable live tracking';
 
   // Auth
-  static const String welcomeBack = 'Welcome to SafeCircle';
+  static const String welcomeBack = 'Welcome to NeighbourHub';
   static const String signInSubtext = 'Share journeys with trusted contacts safely and silently';
   static const String signInWithGoogle = 'Sign in with Google';
   static const String continueAsGuest = 'Continue with Demo Account';

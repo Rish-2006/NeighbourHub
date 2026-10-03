@@ -205,7 +205,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
     final user = ref.watch(authStateProvider).value;
     final rawName = user?.displayName ?? '';
     final rawEmail = user?.email ?? '';
-    final userName = rawName.isNotEmpty && rawName != 'SafeCircle User'
+    final userName = rawName.isNotEmpty && rawName != 'NeighbourHub User'
         ? rawName
         : (rawEmail.contains('@') ? rawEmail.split('@').first : 'User');
 
@@ -330,7 +330,7 @@ class _JourneyScreenState extends ConsumerState<JourneyScreen> {
                 },
                 onShareLink: () {
                   if (activeJourney != null) {
-                    final link = 'https://rish-2006.github.io/SafeCircle/#/track/${activeJourney.id}';
+                    final link = 'https://rish-2006.github.io/NeighbourHub/#/track/${activeJourney.id}';
                     Clipboard.setData(ClipboardData(text: link));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

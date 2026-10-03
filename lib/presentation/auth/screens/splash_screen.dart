@@ -75,11 +75,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.public_rounded,
-                      size: 56,
-                      color: Color(0xFFFFCC00),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/image1.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
@@ -89,7 +90,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
               // App name
               const Text(
-                'SafeCircle',
+                'NeighbourHub',
                 style: TextStyle(
                   color: Color(0xFFFFFFFF),
                   fontSize: 34,

@@ -134,43 +134,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Beautiful glowing logo
                 Center(
-                  child: Container(
-                    width: 90,
+                  child: Image.asset(
+                    'assets/images/image1.png',
                     height: 90,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
-                          blurRadius: 30,
-                          spreadRadius: 8,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFF818CF8).withValues(alpha: 0.3),
-                          blurRadius: 60,
-                          spreadRadius: 15,
-                        ),
-                      ],
-                    ),
-                    child: Container(
-                      margin: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0F172A),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.public,
-                          size: 46,
-                          color: Color(0xFF38BDF8),
-                        ),
-                      ),
-                    ),
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -427,7 +394,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       // Primary Action Button (Sign In / Register)
                       CustomButton(
-                        text: _isSignUp ? 'Create SafeCircle Account' : 'Sign In with Email',
+                        text: _isSignUp ? 'Create NeighbourHub Account' : 'Sign In with Email',
                         icon: _isSignUp ? Icons.person_add_outlined : Icons.login_outlined,
                         isLoading: isLoading,
                         onPressed: isLoading ? null : _submitForm,

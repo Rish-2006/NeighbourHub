@@ -8,7 +8,7 @@ import 'location_service.dart';
 import '../../data/repositories/journey_repository.dart';
 
 class BackgroundTrackingService {
-  static const String notificationChannelId = 'safecircle_tracking_channel';
+  static const String notificationChannelId = 'neighbourhub_tracking_channel';
   static const int notificationId = 888;
 
   static Future<void> initializeService() async {
@@ -18,7 +18,7 @@ class BackgroundTrackingService {
 
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       notificationChannelId,
-      'SafeCircle Active Tracking',
+      'NeighbourHub Active Tracking',
       description: 'Persistent notification while journey safety tracking is active',
       importance: Importance.low,
     );
@@ -37,7 +37,7 @@ class BackgroundTrackingService {
         autoStart: false,
         isForegroundMode: true,
         notificationChannelId: notificationChannelId,
-        initialNotificationTitle: 'SafeCircle Live Protection',
+        initialNotificationTitle: 'NeighbourHub Live Protection',
         initialNotificationContent: 'Sharing location silently with trusted contacts',
         foregroundServiceNotificationId: notificationId,
       ),
@@ -96,7 +96,7 @@ class BackgroundTrackingService {
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           service.setForegroundNotificationInfo(
-            title: 'SafeCircle Active Protection',
+            title: 'NeighbourHub Active Protection',
             content: 'Live location updated at ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
           );
         }

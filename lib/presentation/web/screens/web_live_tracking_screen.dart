@@ -81,7 +81,7 @@ class _WebLiveTrackingScreenState extends ConsumerState<WebLiveTrackingScreen> {
             ),
             const SizedBox(width: 10),
             const Text(
-              'SafeCircle Web Live Tracker',
+              'NeighbourHub Web Live Tracker',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
@@ -263,7 +263,7 @@ class _WebLiveTrackingScreenState extends ConsumerState<WebLiveTrackingScreen> {
                           children: [
                             TileLayer(
                               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.safecircle.safecircle',
+                              userAgentPackageName: 'com.neighbourhub.neighbourhub',
                             ),
                             PolylineLayer(
                               polylines: [

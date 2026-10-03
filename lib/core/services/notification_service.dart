@@ -46,7 +46,7 @@ class NotificationService {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          notification.title ?? 'SafeCircle Alert',
+                          notification.title ?? 'NeighbourHub Alert',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,

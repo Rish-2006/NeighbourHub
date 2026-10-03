@@ -29,7 +29,7 @@ class AuthRepository {
   GoogleSignIn get googleSignInInstance => _googleSignIn;
 
   String _formatUsername(String? displayName, String email) {
-    if (displayName != null && displayName.isNotEmpty && displayName != 'SafeCircle User') {
+    if (displayName != null && displayName.isNotEmpty && displayName != 'NeighbourHub User') {
       return displayName;
     }
     if (email.contains('@')) {
@@ -38,7 +38,7 @@ class AuthRepository {
         return handle[0].toUpperCase() + handle.substring(1);
       }
     }
-    return 'SafeCircle User';
+    return 'NeighbourHub User';
   }
 
   void _init() {
@@ -47,7 +47,7 @@ class AuthRepository {
         if (user != null) {
           final model = UserModel(
             uid: user.uid,
-            email: user.email ?? 'user@safecircle.app',
+            email: user.email ?? 'user@neighbourhub.app',
             displayName: _formatUsername(user.displayName, user.email ?? ''),
             photoUrl: user.photoURL,
             phoneNumber: user.phoneNumber ?? '+1 555-0199',
@@ -83,7 +83,7 @@ class AuthRepository {
       if (user != null) {
         return UserModel(
           uid: user.uid,
-          email: user.email ?? 'user@safecircle.app',
+          email: user.email ?? 'user@neighbourhub.app',
           displayName: _formatUsername(user.displayName, user.email ?? ''),
           photoUrl: user.photoURL,
           phoneNumber: user.phoneNumber ?? '+1 555-0199',
@@ -299,8 +299,8 @@ class AuthRepository {
     final uid = firebaseUser?.uid ?? 'demo_user_123';
     final demoUser = UserModel(
       uid: uid,
-      email: firebaseUser?.email ?? 'demo@safecircle.app',
-      displayName: 'SafeCircle Demo User',
+      email: firebaseUser?.email ?? 'demo@neighbourhub.app',
+      displayName: 'NeighbourHub Demo User',
       phoneNumber: '+1 555-0199',
       createdAt: DateTime.now(),
     );

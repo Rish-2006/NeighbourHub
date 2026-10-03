@@ -79,7 +79,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profile setup complete! Welcome to SafeCircle.'),
+            content: Text('Profile setup complete! Welcome to NeighbourHub.'),
             backgroundColor: AppColors.success,
           ),
         );
