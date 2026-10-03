@@ -9,6 +9,7 @@ import 'admin_report_details_screen.dart';
 import 'create_announcement_screen.dart';
 import 'flat_verification_screen.dart';
 import 'admin_users_screen.dart';
+import 'admin_events_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -25,7 +26,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -122,6 +123,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 ],
               ),
             ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.event_outlined, size: 16),
+                  SizedBox(width: 6),
+                  Text('Events'),
+                ],
+              ),
+            ),
           ],
           labelColor: AppTheme.primaryColor,
           indicatorColor: AppTheme.primaryColor,
@@ -203,6 +214,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
           // ── Tab 4: User Management ────────────────────────────────────────
           const AdminUsersScreen(),
+
+          // ── Tab 5: Events ─────────────────────────────────────────────────
+          const AdminEventsScreen(),
         ],
       ),
     );

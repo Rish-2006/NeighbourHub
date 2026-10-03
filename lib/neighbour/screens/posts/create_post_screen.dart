@@ -233,33 +233,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 },
               ).animate().fadeIn(delay: 300.ms),
 
-              const SizedBox(height: 20),
-
-              // ── Add Image (placeholder for now) ───────────────────────
-              OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Image upload will be available after Firebase Storage is connected.'),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.image_outlined),
-                label: const Text('Add Image (optional)'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
-                  side: BorderSide(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                  ),
-                  foregroundColor:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 350.ms),
-
               const SizedBox(height: 32),
 
               // ── Post Button ────────────────────────────────────────────

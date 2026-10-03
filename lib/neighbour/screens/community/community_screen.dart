@@ -13,9 +13,7 @@ import '../../data/mock_data.dart';
 import '../../widgets/event_card.dart';
 import 'events_screen.dart';
 import 'announcements_screen.dart';
-import 'service_providers_screen.dart';
 import '../lost_found/lost_found_screen.dart';
-import '../help/help_screen.dart';
 
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
@@ -76,23 +74,16 @@ class CommunityScreen extends StatelessWidget {
 
           // Show first 2 events from Firestore
           StreamBuilder<List<EventModel>>(
-            stream: context.read<FirestoreService>().getEvents().asStream(),
+            stream: context.read<FirestoreService>().getEventsStream(),
             builder: (context, snapshot) {
               final events = (snapshot.data ?? []).take(2).toList();
+              
               if (events.isEmpty) return const SizedBox.shrink();
               return Column(
                 children: events.asMap().entries.map((entry) {
                   return EventCard(
                     event: entry.value,
                     index: entry.key,
-                    onJoin: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Joined "${entry.value.title}"!'),
-                          backgroundColor: AppTheme.successColor,
-                        ),
-                      );
-                    },
                   ).animate().fadeIn(delay: (200 + entry.key * 50).ms);
                 }).toList(),
               );
@@ -116,20 +107,6 @@ class CommunityScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(delay: 300.ms),
 
-          // ── Help Requests shortcut ───────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: _CommunityTile(
-              icon: Icons.handshake_outlined,
-              iconColor: AppTheme.infoColor,
-              title: 'Help Requests',
-              subtitle: 'Ask for or offer help to neighbours',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const HelpScreen()),
-              ),
-            ),
-          ).animate().fadeIn(delay: 350.ms),
 
           // ── Community Rules ──────────────────────────────────────────────
           _SectionHeader(
@@ -380,49 +357,3 @@ class _CommunityTile extends StatelessWidget {
   }
 }
 
-// ─── Service Chip ─────────────────────────────────────────────────────────────
-class _ServiceChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _ServiceChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ServiceProvidersScreen(category: label),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppTheme.primaryColor.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: AppTheme.primaryColor),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

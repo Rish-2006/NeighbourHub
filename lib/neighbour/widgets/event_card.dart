@@ -11,7 +11,6 @@ import '../theme/app_theme.dart';
 class EventCard extends StatelessWidget {
   final EventModel event;
   final String? currentUserId;
-  final VoidCallback? onJoin;
   final VoidCallback? onTap;
   final int index;
 
@@ -19,7 +18,6 @@ class EventCard extends StatelessWidget {
     super.key,
     required this.event,
     this.currentUserId,
-    this.onJoin,
     this.onTap,
     this.index = 0,
   });
@@ -27,7 +25,6 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isJoined = currentUserId != null && event.isUserJoined(currentUserId!);
     // Format date: "Sun, Sep 19 • 6:30 AM"
     final dateStr = DateFormat('EEE, MMM d').format(event.date);
     final timeStr = DateFormat('h:mm a').format(event.date);
@@ -111,41 +108,13 @@ class EventCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${event.participantCount} going',
+                      'Registered: ${event.participantCount}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
-                ),
-              ),
-
-              // Join/Joined button
-              OutlinedButton(
-                onPressed: onJoin,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isJoined
-                      ? AppTheme.successColor
-                      : AppTheme.primaryColor,
-                  side: BorderSide(
-                    color: isJoined
-                        ? AppTheme.successColor
-                        : AppTheme.primaryColor,
-                    width: 1.5,
-                  ),
-                  minimumSize: const Size(70, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  isJoined ? 'Going ✓' : 'Join',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               ),
             ],

@@ -4,7 +4,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+
 import '../../models/user_model.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -40,36 +44,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+
+
+  // ── Save profile (name, bio, apartment) ─────────────────────────────────────
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
-    // Simulate network delay for saving to Firestore
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final firestoreService = context.read<FirestoreService>();
+      final authService = context.read<AuthService>();
+      final uid = authService.currentUser?.uid;
 
-    if (!mounted) return;
+      final updatedUser = widget.user.copyWith(
+        name: _nameController.text.trim(),
+        bio: _bioController.text.trim(),
+        apartment: _apartmentController.text.trim(),
+      );
 
-    // Create updated user model
-    final updatedUser = widget.user.copyWith(
-      name: _nameController.text.trim(),
-      bio: _bioController.text.trim(),
-      apartment: _apartmentController.text.trim(),
-    );
+      if (uid != null) {
+        await firestoreService.saveUser(updatedUser);
+      }
 
-    setState(() => _isSaving = false);
+      if (!mounted) return;
 
-    // Return the updated user to the previous screen
-    Navigator.pop(context, updatedUser);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile updated successfully!'),
-        backgroundColor: AppTheme.successColor,
-      ),
-    );
+      Navigator.pop(context, updatedUser);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Save profile error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save profile. Please try again.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
+  // ── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,55 +127,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Avatar edit
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-                    backgroundImage: widget.user.photoUrl.isNotEmpty
-                        ? NetworkImage(widget.user.photoUrl)
-                        : null,
-                    child: widget.user.photoUrl.isEmpty
-                        ? Text(
-                            widget.user.name.isNotEmpty
-                                ? widget.user.name[0].toUpperCase()
-                                : 'N',
-                            style: const TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+              // ── Avatar ──────────────────────────────────────────────────
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                child: Text(
+                  widget.user.name.isNotEmpty
+                      ? widget.user.name[0].toUpperCase()
+                      : 'N',
+                  style: const TextStyle(
+                    color: AppTheme.primaryColor,
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Photo upload coming soon!')),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ).animate().fadeIn().scale(),
-              
-              const SizedBox(height: 32),
-              
-              // Form Fields
+
+              const SizedBox(height: 28),
+
+              // ── Form Fields ───────────────────────────────────────────────
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -166,9 +159,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   return null;
                 },
               ).animate().fadeIn(delay: 100.ms),
-              
+
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _apartmentController,
                 decoration: const InputDecoration(
@@ -176,9 +169,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   prefixIcon: Icon(Icons.home_outlined),
                 ),
               ).animate().fadeIn(delay: 150.ms),
-              
+
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _bioController,
                 maxLines: 4,

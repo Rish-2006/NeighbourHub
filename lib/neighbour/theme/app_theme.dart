@@ -54,7 +54,7 @@ class AppTheme {
         outline: darkBorder,
       ),
 
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: darkBg,
 
       // Typography
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
@@ -291,7 +291,7 @@ class AppTheme {
         error: errorColor,
       ),
 
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: darkBg,
 
       textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
 

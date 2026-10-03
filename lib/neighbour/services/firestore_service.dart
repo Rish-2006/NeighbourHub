@@ -57,6 +57,7 @@ class FirestoreService {
     await _db.collection('users').doc(user.id).set(user.toMap(), SetOptions(merge: true));
   }
 
+
   /// Fetches a single user by their UID from Firestore.
   Future<UserModel?> getUser(String userId) async {
     try {
@@ -203,35 +204,66 @@ class FirestoreService {
 
   // ─── Event Operations ─────────────────────────────────────────────────────
 
-  Future<List<EventModel>> getEvents() async {
-    final sorted = List<EventModel>.from(_events);
-    sorted.sort((a, b) => a.date.compareTo(b.date));
-    return sorted;
+  Stream<List<EventModel>> getEventsStream() {
+    return _db.collection('events').orderBy('date').snapshots().map((snap) {
+      return snap.docs.map((doc) => EventModel.fromMap(doc.data(), doc.id)).toList();
+    });
   }
 
-  Future<void> toggleEventParticipation(String eventId, String userId) async {
-    final index = _events.indexWhere((e) => e.id == eventId);
-    if (index >= 0) {
-      final event = _events[index];
-      final participants = List<String>.from(event.participants);
-      if (participants.contains(userId)) {
-        participants.remove(userId);
-      } else {
-        participants.add(userId);
+  Future<void> joinEvent(EventModel event, UserModel user) async {
+    final registrationId = '${event.id}_${user.id}';
+    final registrationRef = _db.collection('event_registrations').doc(registrationId);
+    final eventRef = _db.collection('events').doc(event.id);
+    
+    final batch = _db.batch();
+    batch.set(registrationRef, {
+      'eventId': event.id,
+      'userId': user.id,
+      'userName': user.name,
+      'userEmail': user.email,
+      'flatNumber': user.apartment,
+      'registeredAt': FieldValue.serverTimestamp(),
+    });
+    
+    batch.update(eventRef, {
+      'participants': FieldValue.arrayUnion([user.id]),
+    });
+    
+    await batch.commit();
+  }
+
+  Future<void> createEvent(EventModel event) async {
+    final docRef = _db.collection('events').doc();
+    final newEvent = EventModel(
+      id: docRef.id,
+      title: event.title,
+      description: event.description,
+      emoji: event.emoji,
+      date: event.date,
+      location: event.location,
+      createdBy: event.createdBy,
+      createdByName: event.createdByName,
+      participants: [],
+    );
+    await docRef.set(newEvent.toMap());
+  }
+
+  Future<void> deleteEvent(String eventId) async {
+    await _db.collection('events').doc(eventId).delete();
+    final regs = await _db.collection('event_registrations').where('eventId', isEqualTo: eventId).get();
+    if (regs.docs.isNotEmpty) {
+      final batch = _db.batch();
+      for (var doc in regs.docs) {
+        batch.delete(doc.reference);
       }
-      
-      _events[index] = EventModel(
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        emoji: event.emoji,
-        date: event.date,
-        location: event.location,
-        createdBy: event.createdBy,
-        createdByName: event.createdByName,
-        participants: participants,
-      );
+      await batch.commit();
     }
+  }
+
+  Stream<List<Map<String, dynamic>>> getEventRegistrationsStream(String eventId) {
+    return _db.collection('event_registrations').where('eventId', isEqualTo: eventId).snapshots().map((snap) {
+      return snap.docs.map((doc) => doc.data()).toList();
+    });
   }
 
   // ─── Notification Operations ──────────────────────────────────────────────
@@ -318,6 +350,80 @@ class FirestoreService {
 
   Future<void> reportIssue(Map<String, dynamic> issueData) async {
     debugPrint('Issue reported: $issueData');
+  }
+
+  // ─── Emergency Community Alert ────────────────────────────────────────────
+
+  /// Sends a community-wide emergency alert.
+  ///
+  /// 1. Writes an alert document to [community_alerts] collection.
+  /// 2. Writes a notification document in [notifications] for every registered
+  ///    user EXCEPT the sender — using a Firestore batch for atomicity.
+  ///
+  /// Returns the alert document ID on success, throws on failure.
+  Future<String> sendEmergencyAlert({
+    required String senderId,
+    required String senderName,
+    required String senderApartment,
+  }) async {
+    // Build message using actual sender name
+    final message = '$senderName needs help.';
+
+    // 1. Create the alert document
+    final alertRef = _db.collection('community_alerts').doc();
+    final alertData = {
+      'senderId': senderId,
+      'senderName': senderName,
+      'senderApartment': senderApartment,
+      'type': 'emergency',
+      'message': message,
+      'status': 'active',
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    // 2. Fetch all users so we can notify each one
+    final usersSnap = await _db.collection('users').get();
+    final otherUsers = usersSnap.docs.where((d) => d.id != senderId).toList();
+
+    // Firestore batch max is 500 writes — split if needed
+    // For typical communities this is well within limits
+    final batches = <WriteBatch>[];
+    var currentBatch = _db.batch();
+    int opCount = 0;
+
+    // Write the alert itself
+    currentBatch.set(alertRef, alertData);
+    opCount++;
+
+    for (final userDoc in otherUsers) {
+      if (opCount >= 499) {
+        batches.add(currentBatch);
+        currentBatch = _db.batch();
+        opCount = 0;
+      }
+      final notifRef = _db.collection('notifications').doc();
+      currentBatch.set(notifRef, {
+        'userId': userDoc.id,
+        'title': '🚨 EMERGENCY COMMUNITY ALERT',
+        'message': message,
+        'type': 'emergency',
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'senderId': senderId,
+        'senderName': senderName,
+        'senderApartment': senderApartment,
+        'alertId': alertRef.id,
+      });
+      opCount++;
+    }
+    batches.add(currentBatch);
+
+    // Commit all batches
+    for (final batch in batches) {
+      await batch.commit();
+    }
+
+    return alertRef.id;
   }
 
   // ─── Lost & Found Operations ──────────────────────────────────────────────

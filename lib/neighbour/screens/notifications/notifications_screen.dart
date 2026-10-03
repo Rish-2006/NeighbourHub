@@ -1,6 +1,7 @@
 // lib/screens/notifications/notifications_screen.dart
 //
 // Shows a list of all user notifications with mark-as-read functionality.
+// Emergency notifications open a detail bottom sheet on tap.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,6 +11,7 @@ import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/notification_card.dart';
+import '../safety/emergency_alert_detail_sheet.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -29,9 +31,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _markAsRead(NotificationModel notif) async {
-    if (notif.isRead) return;
-    await context.read<FirestoreService>().markNotificationRead(notif.id);
+  Future<void> _onNotificationTap(NotificationModel notif) async {
+    // Mark as read first
+    if (!notif.isRead) {
+      await context.read<FirestoreService>().markNotificationRead(notif.id);
+    }
+
+    if (!mounted) return;
+
+    // For emergency notifications, open the detail bottom sheet
+    if (notif.type == NotificationType.emergency) {
+      EmergencyAlertDetailSheet.show(context, notif);
+    }
   }
 
   @override
@@ -71,9 +82,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final _notifications = snapshot.data ?? [];
+          final notifications = snapshot.data ?? [];
 
-          return _notifications.isEmpty
+          return notifications.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -94,12 +105,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 )
               : ListView.separated(
-                  itemCount: _notifications.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemCount: notifications.length,
+                  separatorBuilder: (context, index) {
+                    // Emergency cards have their own container margin — skip divider between them
+                    final isEmergency =
+                        notifications[index].type == NotificationType.emergency;
+                    return isEmergency
+                        ? const SizedBox.shrink()
+                        : const Divider(height: 1);
+                  },
                   itemBuilder: (context, index) {
                     return NotificationCard(
-                      notification: _notifications[index],
-                      onTap: () => _markAsRead(_notifications[index]),
+                      notification: notifications[index],
+                      onTap: () => _onNotificationTap(notifications[index]),
                     ).animate().fadeIn(delay: (index * 50).ms);
                   },
                 );

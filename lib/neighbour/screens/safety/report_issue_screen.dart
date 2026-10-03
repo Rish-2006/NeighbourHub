@@ -215,21 +215,6 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 },
               ).animate().fadeIn(delay: 350.ms),
 
-              const SizedBox(height: 20),
-              
-              OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Image attachment coming soon!')),
-                  );
-                },
-                icon: const Icon(Icons.add_a_photo_outlined),
-                label: const Text('Attach Photo (Optional)'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ).animate().fadeIn(delay: 400.ms),
-
               const SizedBox(height: 32),
 
               ElevatedButton(

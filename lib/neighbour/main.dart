@@ -11,7 +11,6 @@ import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
-import 'services/storage_service.dart';
 import 'models/user_model.dart';
 
 import 'screens/auth/login_screen.dart';
@@ -48,7 +47,6 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => AuthService()),
         Provider(create: (_) => FirestoreService()),
-        Provider(create: (_) => StorageService()),
       ],
       child: const NeighbourHubApp(),
     ),

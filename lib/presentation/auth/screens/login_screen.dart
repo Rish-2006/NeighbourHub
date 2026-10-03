@@ -404,18 +404,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
 
-
-
-
-              // Continue with Demo Account (Guest)
-              CustomButton(
-                text: 'Continue with Demo Account (Guest)',
-                icon: Icons.lock_open_outlined,
-                variant: ButtonVariant.outline,
-                isLoading: isLoading,
-                onPressed: isLoading ? null : _handleDemoSignIn,
-              ),
-
               const SizedBox(height: 20),
             ],
           ),

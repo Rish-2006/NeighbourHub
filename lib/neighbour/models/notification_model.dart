@@ -11,6 +11,7 @@ enum NotificationType {
   helpResponse,
   general,
   issueStatus,
+  emergency,
 }
 
 extension NotificationTypeExtension on NotificationType {
@@ -23,6 +24,7 @@ extension NotificationTypeExtension on NotificationType {
       case NotificationType.helpResponse: return 'helpResponse';
       case NotificationType.general:      return 'general';
       case NotificationType.issueStatus:  return 'issueStatus';
+      case NotificationType.emergency:    return 'emergency';
     }
   }
 
@@ -34,6 +36,7 @@ extension NotificationTypeExtension on NotificationType {
       case 'announcement': return NotificationType.announcement;
       case 'helpResponse': return NotificationType.helpResponse;
       case 'issueStatus':  return NotificationType.issueStatus;
+      case 'emergency':    return NotificationType.emergency;
       default:             return NotificationType.general;
     }
   }
@@ -48,20 +51,25 @@ extension NotificationTypeExtension on NotificationType {
       case NotificationType.helpResponse: return '🤝';
       case NotificationType.general:      return '🔔';
       case NotificationType.issueStatus:  return '📋';
+      case NotificationType.emergency:    return '🚨';
     }
   }
 }
 
 class NotificationModel {
   final String id;
-  final String userId;    // Who this notification is for
-  final String title;     // Short heading
-  final String message;   // Full message
+  final String userId;      // Who this notification is for
+  final String title;       // Short heading
+  final String message;     // Full message
   final NotificationType type;
-  final bool isRead;      // Has the user seen this?
+  final bool isRead;        // Has the user seen this?
   final DateTime createdAt;
   final String? reportId;
   final String? status;
+  // Emergency-specific extras
+  final String? senderId;
+  final String? senderName;
+  final String? senderApartment;
 
   const NotificationModel({
     required this.id,
@@ -73,6 +81,9 @@ class NotificationModel {
     required this.createdAt,
     this.reportId,
     this.status,
+    this.senderId,
+    this.senderName,
+    this.senderApartment,
   });
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -91,6 +102,9 @@ class NotificationModel {
           : DateTime.now(),
       reportId: map['reportId'] as String?,
       status: map['status'] as String?,
+      senderId: map['senderId'] as String?,
+      senderName: map['senderName'] as String?,
+      senderApartment: map['senderApartment'] as String?,
     );
   }
 
@@ -104,6 +118,9 @@ class NotificationModel {
       'createdAt': createdAt.millisecondsSinceEpoch, // Or FieldValue.serverTimestamp() when creating
       'reportId': reportId,
       'status': status,
+      'senderId': senderId,
+      'senderName': senderName,
+      'senderApartment': senderApartment,
     };
   }
 
@@ -118,6 +135,9 @@ class NotificationModel {
       createdAt: createdAt,
       reportId: reportId,
       status: status,
+      senderId: senderId,
+      senderName: senderName,
+      senderApartment: senderApartment,
     );
   }
 }

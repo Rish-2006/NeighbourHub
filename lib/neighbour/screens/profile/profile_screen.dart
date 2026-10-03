@@ -3,17 +3,18 @@
 // Current user's profile showing their details and settings shortcuts.
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import 'edit_profile_screen.dart';
-import 'settings_screen.dart';
+import 'flat_number_section.dart';
 import 'my_issues_screen.dart';
 import 'my_posts_screen.dart';
-import 'flat_number_section.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -52,13 +53,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               name: firebaseUser.displayName ?? 'Neighbour',
               email: firebaseUser.email ?? '',
               photoUrl: firebaseUser.photoURL ?? '',
-              neighbourhood: 'Green Valley Community', // Mock default
+              neighbourhood: 'Green Valley Community',
               createdAt: DateTime.now(),
             );
         _isLoading = false;
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -96,84 +98,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const SizedBox(height: 16),
 
-            // ── Avatar ──────────────────────────────────────────────────────
+            // ── Avatar ────────────────────────────────────────────────────────
             Center(
               child: Stack(
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-                    backgroundImage: _currentUser!.photoUrl.isNotEmpty
-                        ? NetworkImage(_currentUser!.photoUrl)
-                        : null,
-                    child: _currentUser!.photoUrl.isEmpty
-                        ? Text(
-                            _currentUser!.name.isNotEmpty
-                                ? _currentUser!.name[0].toUpperCase()
-                                : 'N',
-                            style: const TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+                    backgroundColor:
+                        AppTheme.primaryColor.withValues(alpha: 0.2),
+                    child: Text(
+                      _currentUser!.name.isNotEmpty
+                          ? _currentUser!.name[0].toUpperCase()
+                          : 'N',
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
+
+                  // Edit profile badge (goes to EditProfileScreen)
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.white, size: 16),
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(),
-                        onPressed: () async {
-                          // Navigate to edit profile and wait for result
-                          final updatedUser = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EditProfileScreen(user: _currentUser!),
-                            ),
-                          );
-                          // If profile was updated, refresh the screen
-                          if (updatedUser != null && updatedUser is UserModel) {
-                            setState(() {
-                              _currentUser = updatedUser;
-                            });
-                          }
-                        },
+                    child: GestureDetector(
+                      onTap: () async {
+                        final updatedUser = await Navigator.push<UserModel>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                EditProfileScreen(user: _currentUser!),
+                          ),
+                        );
+                        if (updatedUser != null && mounted) {
+                          setState(() => _currentUser = updatedUser);
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkCard,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppTheme.darkBorder, width: 2),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ).animate().fadeIn().scale(),
-            
-            const SizedBox(height: 16),
-            
-            // ── Name & Email ────────────────────────────────────────────────
+
+            const SizedBox(height: 12),
+
+            // ── Name & Email ──────────────────────────────────────────────────
             Text(
               _currentUser!.name,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
             ).animate().fadeIn(delay: 100.ms),
-            
+
             Text(
               _currentUser!.email,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ).animate().fadeIn(delay: 150.ms),
-            
+
             const SizedBox(height: 24),
-            
-            // ── Community Info ──────────────────────────────────────────────
+
+            // ── Community Info ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
@@ -183,7 +186,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, color: AppTheme.primaryColor),
+                          const Icon(Icons.location_on_outlined,
+                              color: AppTheme.primaryColor),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -192,12 +196,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   'Community',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
                                   ),
                                 ),
                                 Text(
-                                  _currentUser!.neighbourhood.isNotEmpty 
-                                      ? _currentUser!.neighbourhood 
+                                  _currentUser!.neighbourhood.isNotEmpty
+                                      ? _currentUser!.neighbourhood
                                       : 'Not set',
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
@@ -208,12 +213,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
-                      
+
                       if (_currentUser!.apartment.isNotEmpty) ...[
                         const Divider(height: 24),
                         Row(
                           children: [
-                            const Icon(Icons.home_outlined, color: AppTheme.primaryColor),
+                            const Icon(Icons.home_outlined,
+                                color: AppTheme.primaryColor),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -222,7 +228,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Text(
                                     'Apartment / House',
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
                                     ),
                                   ),
                                   Text(
@@ -242,15 +249,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ).animate().fadeIn(delay: 200.ms),
-            
+
             const SizedBox(height: 16),
 
-            // ── YOUR FLAT NUMBER ─────────────────────────────────────────────
+            // ── YOUR FLAT NUMBER ──────────────────────────────────────────────
             FlatNumberSection(userId: _currentUser!.id),
 
             const SizedBox(height: 16),
-            
-            // ── Menu Items ──────────────────────────────────────────────────
+
+            // ── Menu Items ────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -261,48 +268,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const MyIssuesScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const MyIssuesScreen()),
                       );
                     },
                   ).animate().fadeIn(delay: 200.ms),
-                  
+
                   _ProfileMenuItem(
                     icon: Icons.article_outlined,
                     title: 'My Posts',
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const MyPostsScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const MyPostsScreen()),
                       );
                     },
                   ).animate().fadeIn(delay: 250.ms),
-                  
+
                   _ProfileMenuItem(
                     icon: Icons.event_outlined,
                     title: 'My Events',
                     onTap: () {},
                   ).animate().fadeIn(delay: 300.ms),
-                  
-                  _ProfileMenuItem(
-                    icon: Icons.handshake_outlined,
-                    title: 'My Help Requests',
-                    onTap: () {},
-                  ).animate().fadeIn(delay: 350.ms),
-                  
+
+
                   _ProfileMenuItem(
                     icon: Icons.settings_outlined,
                     title: 'Settings',
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsScreen()),
                       );
                     },
                   ).animate().fadeIn(delay: 400.ms),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
           ],
         ),

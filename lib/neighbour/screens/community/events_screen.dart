@@ -5,9 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
-import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/event_card.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -18,34 +16,16 @@ class EventsScreen extends StatefulWidget {
 }
 
 class _EventsScreenState extends State<EventsScreen> {
-  void _toggleJoin(EventModel event, String userId) async {
-    await context.read<FirestoreService>().toggleEventParticipation(event.id, userId);
-    if (!mounted) return;
-    final isJoined = event.participants.contains(userId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          !isJoined
-              ? 'You\'re going to "${event.title}"! 🎉'
-              : 'You\'ve left "${event.title}".',
-        ),
-        backgroundColor:
-            !isJoined ? AppTheme.successColor : AppTheme.grey600,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userId = context.read<AuthService>().currentUser?.uid ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Community Events'),
       ),
       body: StreamBuilder<List<EventModel>>(
-        stream: context.read<FirestoreService>().getEvents().asStream(),
+        stream: context.read<FirestoreService>().getEventsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -76,9 +56,7 @@ class _EventsScreenState extends State<EventsScreen> {
             itemBuilder: (context, index) {
               return EventCard(
                 event: events[index],
-                currentUserId: userId,
                 index: index,
-                onJoin: () => _toggleJoin(events[index], userId),
               );
             },
           );
