@@ -941,11 +941,24 @@ class _MemberCardState extends State<_MemberCard> {
     }
     switch (status) {
       case 'connected':
-        return _Chip(
-          label: '✓ Connected',
-          color: AppTheme.successColor,
-          filled: false,
-          onTap: () => _openProfile(context),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _Chip(
+              label: '✓ Connected',
+              color: AppTheme.successColor,
+              filled: false,
+              onTap: () => _openProfile(context),
+            ),
+            const SizedBox(height: 5),
+            _Chip(
+              label: 'Disconnect',
+              color: AppTheme.errorColor,
+              filled: false,
+              onTap: () => _disconnect(context),
+            ),
+          ],
         );
       case 'sent':
         return _Chip(
@@ -1028,6 +1041,79 @@ class _MemberCardState extends State<_MemberCard> {
     try {
       await widget.firestoreService
           .rejectConnectionRequest(widget.pendingRequest!.id);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isActing = false);
+    }
+  }
+
+  Future<void> _disconnect(BuildContext context) async {
+    final currentUserId = widget.currentUser?.id;
+    if (currentUserId == null) return;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppTheme.darkCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.darkBorder),
+        ),
+        title: Text(
+          'Disconnect from ${widget.user.name}?',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: const Text(
+          'You will no longer be connected with this neighbour.',
+          style: TextStyle(color: AppTheme.darkSubtext, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppTheme.darkSubtext,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text(
+              'Disconnect',
+              style: TextStyle(
+                color: AppTheme.errorColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isActing = true);
+    try {
+      await widget.firestoreService.disconnectUser(
+        currentUserId,
+        widget.user.id,
+      );
+      // The Firestore stream automatically updates the UI.
+      // Show snackbar feedback.
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Disconnected from ${widget.user.name}'),
+          backgroundColor: AppTheme.darkCard,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     } catch (_) {
     } finally {
       if (mounted) setState(() => _isActing = false);

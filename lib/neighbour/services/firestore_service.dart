@@ -567,5 +567,16 @@ class FirestoreService {
       return connectedIds;
     });
   }
+
+  /// Removes the connection between two users.
+  /// Uses the same deterministic connection ID: '${sortedId1}_${sortedId2}'.
+  /// Deleting this single document disconnects both sides simultaneously
+  /// because getConnectedUserIdsStream queries by user1Id OR user2Id.
+  Future<void> disconnectUser(String currentUserId, String otherUserId) async {
+    final ids = [currentUserId, otherUserId]..sort();
+    final connectionId = '${ids[0]}_${ids[1]}';
+    await _db.collection('connections').doc(connectionId).delete();
+  }
 }
+
 
