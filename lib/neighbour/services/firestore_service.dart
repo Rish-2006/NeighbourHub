@@ -204,9 +204,29 @@ class FirestoreService {
 
   // ─── Event Operations ─────────────────────────────────────────────────────
 
+  /// All events sorted by date (admin use — shows all including past).
   Stream<List<EventModel>> getEventsStream() {
-    return _db.collection('events').orderBy('date').snapshots().map((snap) {
-      return snap.docs.map((doc) => EventModel.fromMap(doc.data(), doc.id)).toList();
+    return _db.collection('events').snapshots().map((snap) {
+      final list = snap.docs.map((doc) => EventModel.fromMap(doc.data(), doc.id)).toList();
+      list.sort((a, b) => a.date.compareTo(b.date));
+      return list;
+    });
+  }
+
+  /// Only upcoming events (today onwards) — for user-facing Community section.
+  Stream<List<EventModel>> getUpcomingEventsStream() {
+    final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
+    return _db
+        .collection('events')
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((doc) => EventModel.fromMap(doc.data(), doc.id))
+          .where((e) => !e.date.isBefore(startOfToday))
+          .toList();
+      list.sort((a, b) => a.date.compareTo(b.date));
+      return list;
     });
   }
 
@@ -234,18 +254,12 @@ class FirestoreService {
 
   Future<void> createEvent(EventModel event) async {
     final docRef = _db.collection('events').doc();
-    final newEvent = EventModel(
-      id: docRef.id,
-      title: event.title,
-      description: event.description,
-      emoji: event.emoji,
-      date: event.date,
-      location: event.location,
-      createdBy: event.createdBy,
-      createdByName: event.createdByName,
-      participants: [],
-    );
+    final newEvent = event.copyWith(id: docRef.id);
     await docRef.set(newEvent.toMap());
+  }
+
+  Future<void> updateEvent(EventModel event) async {
+    await _db.collection('events').doc(event.id).update(event.toUpdateMap());
   }
 
   Future<void> deleteEvent(String eventId) async {

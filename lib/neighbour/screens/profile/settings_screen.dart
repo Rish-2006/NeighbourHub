@@ -7,8 +7,6 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
-// ThemeController is defined in the root lib/main.dart
-import 'package:neighbour_hub/main.dart' show ThemeController;
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -76,12 +74,6 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ThemeController? themeController;
-    try {
-      themeController = Provider.of<ThemeController>(context);
-    } catch (_) {
-      // ThemeController not available; gracefully degrade
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF13111C),
@@ -94,77 +86,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
 
-          // ── Appearance ───────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'APPEARANCE',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
 
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            color: const Color(0xFF1E1B2E),
-            child: SwitchListTile(
-              title: const Text('Dark Mode', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('Use dark theme throughout the app',
-                  style: TextStyle(color: Color(0xFF94A3B8))),
-              secondary: const Icon(Icons.dark_mode_outlined, color: AppTheme.primaryColor),
-              value: themeController?.themeMode == ThemeMode.dark,
-              activeThumbColor: AppTheme.primaryColor,
-              onChanged: (value) {
-                themeController?.toggleTheme(value);
-              },
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // ── Account ──────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'ACCOUNT',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            color: const Color(0xFF1E1B2E),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_outlined, color: AppTheme.primaryColor),
-                  title: const Text('Push Notifications', style: TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Notification settings coming soon!')),
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: Color(0xFF2D2A45)),
-                ListTile(
-                  leading: const Icon(Icons.shield_outlined, color: AppTheme.primaryColor),
-                  title: const Text('Privacy & Security', style: TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
 
           // ── About ────────────────────────────────────────────────────────
           Padding(
@@ -213,7 +135,38 @@ class SettingsScreen extends StatelessWidget {
                   leading: const Icon(Icons.help_outline, color: AppTheme.primaryColor),
                   title: const Text('Help & Support', style: TextStyle(color: Colors.white)),
                   trailing: const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
-                  onTap: () {},
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: const Color(0xFF1E1B2E),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                        ),
+                        title: const Text('Contact Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Email: srimadhu6521@gmail.com', style: TextStyle(color: Color(0xFF94A3B8))),
+                            SizedBox(height: 8),
+                            Text('Contact: 9823456734', style: TextStyle(color: Color(0xFF94A3B8))),
+                            SizedBox(height: 8),
+                            Text('Role: Community Administrator', style: TextStyle(color: Color(0xFF94A3B8))),
+                            SizedBox(height: 8),
+                            Text('Support: Available for community-related issues and assistance.', style: TextStyle(color: Color(0xFF94A3B8))),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Close', style: TextStyle(color: AppTheme.primaryColor)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

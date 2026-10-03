@@ -72,22 +72,57 @@ class CommunityScreen extends StatelessWidget {
             ),
           ).animate().fadeIn(delay: 150.ms),
 
-          // Show first 2 events from Firestore
+          // Show first 2 upcoming events — live from Firestore
           StreamBuilder<List<EventModel>>(
-            stream: context.read<FirestoreService>().getEventsStream(),
+            stream: context.read<FirestoreService>().getUpcomingEventsStream(),
             builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: LinearProgressIndicator(),
+                );
+              }
               final events = (snapshot.data ?? []).take(2).toList();
-              
-              if (events.isEmpty) return const SizedBox.shrink();
+
+              if (events.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkCard,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.darkBorder),
+                    ),
+                    child: const Column(
+                      children: [
+                        Text('📅', style: TextStyle(fontSize: 28)),
+                        SizedBox(height: 8),
+                        Text(
+                          'No upcoming events',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'New community events will appear here\nwhen they are announced.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppTheme.darkSubtext, fontSize: 12, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               return Column(
                 children: events.asMap().entries.map((entry) {
                   return EventCard(
                     event: entry.value,
                     index: entry.key,
-                  ).animate().fadeIn(delay: (200 + entry.key * 50).ms);
+                  );
                 }).toList(),
               );
-            }
+            },
           ),
 
           const SizedBox(height: 8),

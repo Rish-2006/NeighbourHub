@@ -85,10 +85,15 @@ class FlatVerificationScreen extends StatelessWidget {
         );
       }
     } catch (e) {
+      final errorMsg = e.toString();
+      if (errorMsg.contains('This request has already been processed.')) {
+        // Silently ignore if already processed to prevent duplicate error messages.
+        return;
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Approval failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text('Approval failed: ${errorMsg.replaceAll('Exception: ', '')}'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
