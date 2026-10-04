@@ -1,4 +1,3 @@
-// lib/data/mock_data.dart
 //
 // MOCK DATA - Sample data for development and demonstration.
 //
@@ -188,7 +187,13 @@ class MockData {
       endTime: '1:00 PM',
       createdBy: 'user_005',
       createdByName: 'Kiran Patel',
-      participants: ['user_001', 'user_002', 'user_003', 'user_004', 'user_005'],
+      participants: [
+        'user_001',
+        'user_002',
+        'user_003',
+        'user_004',
+        'user_005',
+      ],
     ),
     EventModel(
       id: 'event_004',
@@ -206,14 +211,14 @@ class MockData {
     ),
   ];
 
-
   // ─── Sample Notifications ─────────────────────────────────────────────────
   static final List<NotificationModel> notifications = [
     NotificationModel(
       id: 'notif_001',
       userId: 'user_001',
       title: 'New comment on your post',
-      message: 'Priya Kumar commented on your post "Looking for a good plumber"',
+      message:
+          'Priya Kumar commented on your post "Looking for a good plumber"',
       type: NotificationType.comment,
       isRead: false,
       createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
@@ -250,8 +255,7 @@ class MockData {
       id: 'notif_005',
       userId: 'user_001',
       title: 'Response to your help request',
-      message:
-          'Ananya Reddy responded to your help request about the plumber.',
+      message: 'Ananya Reddy responded to your help request about the plumber.',
       type: NotificationType.helpResponse,
       isRead: true,
       createdAt: DateTime.now().subtract(const Duration(days: 2)),
