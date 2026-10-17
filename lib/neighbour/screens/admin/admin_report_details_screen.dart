@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/mongo_sync_service.dart';
 
 class AdminReportDetailsScreen extends StatefulWidget {
   final String reportId;
@@ -43,7 +44,8 @@ class _AdminReportDetailsScreenState extends State<AdminReportDetailsScreen> {
       
       // Create notification
       final notifRef = FirebaseFirestore.instance.collection('notifications').doc();
-      batch.set(notifRef, {
+      final notifData = {
+        'id': notifRef.id,
         'userId': widget.reportData['userId'],
         'title': 'Issue ${newStatus == "Resolved" ? "Resolved" : "Update"}',
         'message': 'Your reported issue \'${widget.reportData['title']}\' is now $newStatus.',
@@ -52,9 +54,16 @@ class _AdminReportDetailsScreenState extends State<AdminReportDetailsScreen> {
         'createdAt': FieldValue.serverTimestamp(),
         'reportId': widget.reportId,
         'status': newStatus,
-      });
+      };
+      batch.set(notifRef, notifData);
       
       await batch.commit();
+
+      MongoSyncService.instance.syncDocument(collection: 'reports', data: {
+        'id': widget.reportId,
+        'status': newStatus,
+      });
+      MongoSyncService.instance.syncNotificationMap(notifData);
 
       if (!mounted) return;
       setState(() {

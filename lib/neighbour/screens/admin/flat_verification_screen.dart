@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../services/mongo_sync_service.dart';
 
 class FlatVerificationScreen extends StatelessWidget {
   const FlatVerificationScreen({super.key});
@@ -67,6 +68,7 @@ class FlatVerificationScreen extends StatelessWidget {
         // Notify the user
         final notifRef = db.collection('notifications').doc();
         tx.set(notifRef, {
+          'id': notifRef.id,
           'userId': userId,
           'title': 'Flat Verified ✅',
           'message': 'Your flat $flatNumber has been verified successfully.',
@@ -74,6 +76,23 @@ class FlatVerificationScreen extends StatelessWidget {
           'isRead': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
+      });
+
+      MongoSyncService.instance.syncFlatAssignment({
+        'id': flatNumber,
+        'userId': userId,
+        'userName': userName,
+        'flatNumber': flatNumber,
+        'verifiedAt': DateTime.now().toIso8601String(),
+      });
+      MongoSyncService.instance.syncFlatVerificationRequest({
+        'id': requestId,
+        'status': 'Approved',
+      });
+      MongoSyncService.instance.syncDocument(collection: 'users', data: {
+        'id': userId,
+        'flatNumber': flatNumber,
+        'flatVerificationStatus': 'Verified',
       });
 
       if (context.mounted) {
@@ -121,16 +140,28 @@ class FlatVerificationScreen extends StatelessWidget {
       });
 
       final notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
+      final notifData = {
+        'id': notifRef.id,
         'userId': userId,
         'title': 'Flat Verification Update',
         'message': 'Your flat $flatNumber could not be verified. You may submit another request.',
         'type': 'flatVerification',
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      batch.set(notifRef, notifData);
 
       await batch.commit();
+
+      MongoSyncService.instance.syncFlatVerificationRequest({
+        'id': requestId,
+        'status': 'Rejected',
+      });
+      MongoSyncService.instance.syncDocument(collection: 'users', data: {
+        'id': userId,
+        'flatVerificationStatus': 'Rejected',
+      });
+      MongoSyncService.instance.syncNotificationMap(notifData);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

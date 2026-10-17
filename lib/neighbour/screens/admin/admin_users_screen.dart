@@ -14,6 +14,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../constants.dart';
+import '../../services/mongo_sync_service.dart';
 import '../../theme/app_theme.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -64,10 +65,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       final assignSnap = await assignRef.get();
       if (assignSnap.exists && assignSnap.data()?['userId'] == uid) {
         batch.delete(assignRef);
+        MongoSyncService.instance.deleteFlatAssignment(flatNumber);
       }
     }
 
     await batch.commit();
+    MongoSyncService.instance.deleteUser(uid);
 
     // 3. Delete flat verification requests for this user (may be multiple)
     final fvrSnap = await _db

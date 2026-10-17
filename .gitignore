@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Backend & Secrets
+backend/.env
+backend/.env.local
+backend/node_modules/
+backend/*serviceAccount*.json
+backend/serviceAccountKey.json
+*.pem
+*.key

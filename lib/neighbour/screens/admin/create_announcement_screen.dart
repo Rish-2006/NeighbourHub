@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/mongo_sync_service.dart';
 import '../../theme/app_theme.dart';
 
 class CreateAnnouncementScreen extends StatefulWidget {
@@ -39,13 +40,19 @@ class _CreateAnnouncementScreenState extends State<CreateAnnouncementScreen> {
     final user = authService.currentUser;
 
     try {
-      await FirebaseFirestore.instance.collection('announcements').add({
+      final announcementData = {
         'title': _titleCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
         'imageUrl': '',
         'createdBy': user?.displayName ?? 'Admin',
         'createdByEmail': user?.email ?? '',
         'createdAt': FieldValue.serverTimestamp(),
+      };
+      final docRef = await FirebaseFirestore.instance.collection('announcements').add(announcementData);
+
+      MongoSyncService.instance.syncAnnouncementMap({
+        ...announcementData,
+        'id': docRef.id,
       });
 
       if (!mounted) return;

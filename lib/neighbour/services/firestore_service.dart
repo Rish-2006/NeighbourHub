@@ -18,8 +18,11 @@ import '../models/comment_model.dart';
 import '../models/lost_found_model.dart';
 import '../models/announcement_model.dart';
 import '../data/mock_data.dart';
+import 'mongo_sync_service.dart';
 
 class FirestoreService {
+  final MongoSyncService _mongoSync;
+
   // In-memory global data (non-user features still use mock data)
   static final List<CommentModel> _comments = [];
   static final List<EventModel> _events = List.from(MockData.events);
@@ -33,7 +36,8 @@ class FirestoreService {
   static final StreamController<List<LostFoundModel>> _lostFoundController = StreamController.broadcast();
   static final StreamController<List<AnnouncementModel>> _announcementController = StreamController.broadcast();
 
-  FirestoreService() {
+  FirestoreService({MongoSyncService? mongoSync})
+      : _mongoSync = mongoSync ?? MongoSyncService.instance {
     // Populate lost and found if empty
     if (_lostFound.isEmpty && MockData.lostFoundItems.isNotEmpty) {
       for (var item in MockData.lostFoundItems) {
@@ -55,6 +59,18 @@ class FirestoreService {
   /// Saves (upserts) a user document into Firestore.
   Future<void> saveUser(UserModel user) async {
     await _db.collection('users').doc(user.id).set(user.toMap(), SetOptions(merge: true));
+    _mongoSync.syncUser(user);
+  }
+
+  /// Updates only the user's profile photo URL in Firestore.
+  Future<void> updateUserProfilePhoto(String userId, String photoUrl) async {
+    await _db.collection('users').doc(userId).set({
+      'photoUrl': photoUrl,
+    }, SetOptions(merge: true));
+    _mongoSync.syncDocument(collection: 'users', data: {
+      'id': userId,
+      'photoUrl': photoUrl,
+    });
   }
 
 
@@ -147,6 +163,7 @@ class FirestoreService {
       const Duration(seconds: 10),
       onTimeout: () => throw Exception('Connection timeout. Please ensure Firestore Database is enabled in your Firebase Console!'),
     );
+    _mongoSync.syncPost(post);
   }
 
   Future<void> toggleLike(String postId, String userId) async {
@@ -164,6 +181,12 @@ class FirestoreService {
     }
     
     await docRef.update({
+      'likedBy': likedBy,
+      'likesCount': likedBy.length,
+    });
+
+    _mongoSync.syncDocument(collection: 'posts', data: {
+      'id': postId,
       'likedBy': likedBy,
       'likesCount': likedBy.length,
     });
@@ -190,14 +213,20 @@ class FirestoreService {
     // Write comment to Firestore
     final docRef = _db.collection('comments').doc(comment.id);
     await docRef.set(comment.toMap());
+    _mongoSync.syncComment(comment);
     
     // Update post comments count in Firestore
     final postRef = _db.collection('posts').doc(comment.postId);
     final postSnap = await postRef.get();
     if (postSnap.exists) {
       final post = PostModel.fromMap(postSnap.data()!, postSnap.id);
+      final newCount = post.commentsCount + 1;
       await postRef.update({
-        'commentsCount': post.commentsCount + 1,
+        'commentsCount': newCount,
+      });
+      _mongoSync.syncDocument(collection: 'posts', data: {
+        'id': comment.postId,
+        'commentsCount': newCount,
       });
     }
   }
@@ -235,40 +264,53 @@ class FirestoreService {
     final registrationRef = _db.collection('event_registrations').doc(registrationId);
     final eventRef = _db.collection('events').doc(event.id);
     
-    final batch = _db.batch();
-    batch.set(registrationRef, {
+    final regData = {
+      'id': registrationId,
       'eventId': event.id,
       'userId': user.id,
       'userName': user.name,
       'userEmail': user.email,
       'flatNumber': user.apartment,
       'registeredAt': FieldValue.serverTimestamp(),
-    });
+    };
+
+    final batch = _db.batch();
+    batch.set(registrationRef, regData);
     
     batch.update(eventRef, {
       'participants': FieldValue.arrayUnion([user.id]),
     });
     
     await batch.commit();
+
+    _mongoSync.syncEventRegistration(regData);
+    _mongoSync.syncDocument(collection: 'events', data: {
+      'id': event.id,
+      'participants': [...event.participants, user.id],
+    });
   }
 
   Future<void> createEvent(EventModel event) async {
     final docRef = _db.collection('events').doc();
     final newEvent = event.copyWith(id: docRef.id);
     await docRef.set(newEvent.toMap());
+    _mongoSync.syncEvent(newEvent);
   }
 
   Future<void> updateEvent(EventModel event) async {
     await _db.collection('events').doc(event.id).update(event.toUpdateMap());
+    _mongoSync.syncEvent(event);
   }
 
   Future<void> deleteEvent(String eventId) async {
     await _db.collection('events').doc(eventId).delete();
+    _mongoSync.deleteEvent(eventId);
     final regs = await _db.collection('event_registrations').where('eventId', isEqualTo: eventId).get();
     if (regs.docs.isNotEmpty) {
       final batch = _db.batch();
       for (var doc in regs.docs) {
         batch.delete(doc.reference);
+        _mongoSync.deleteEventRegistration(doc.id);
       }
       await batch.commit();
     }
@@ -322,6 +364,10 @@ class FirestoreService {
     }
     try {
       await _db.collection('notifications').doc(notificationId).update({'isRead': true});
+      _mongoSync.syncDocument(collection: 'notifications', data: {
+        'id': notificationId,
+        'isRead': true,
+      });
     } catch (e) {
       debugPrint('markNotificationRead error: $e');
     }
@@ -339,10 +385,15 @@ class FirestoreService {
           .where('isRead', isEqualTo: false)
           .get();
       final batch = _db.batch();
+      final updatedDocs = <Map<String, dynamic>>[];
       for (var doc in snap.docs) {
         batch.update(doc.reference, {'isRead': true});
+        updatedDocs.add({'id': doc.id, 'isRead': true});
       }
       await batch.commit();
+      if (updatedDocs.isNotEmpty) {
+        _mongoSync.syncNotificationBatch(updatedDocs);
+      }
     } catch (e) {
       debugPrint('markAllNotificationsRead error: $e');
     }
@@ -386,6 +437,7 @@ class FirestoreService {
     // 1. Create the alert document
     final alertRef = _db.collection('community_alerts').doc();
     final alertData = {
+      'id': alertRef.id,
       'senderId': senderId,
       'senderName': senderName,
       'senderApartment': senderApartment,
@@ -400,8 +452,8 @@ class FirestoreService {
     final otherUsers = usersSnap.docs.where((d) => d.id != senderId).toList();
 
     // Firestore batch max is 500 writes — split if needed
-    // For typical communities this is well within limits
     final batches = <WriteBatch>[];
+    final notifsToSync = <Map<String, dynamic>>[];
     var currentBatch = _db.batch();
     int opCount = 0;
 
@@ -416,7 +468,8 @@ class FirestoreService {
         opCount = 0;
       }
       final notifRef = _db.collection('notifications').doc();
-      currentBatch.set(notifRef, {
+      final notifData = {
+        'id': notifRef.id,
         'userId': userDoc.id,
         'title': '🚨 EMERGENCY COMMUNITY ALERT',
         'message': message,
@@ -427,7 +480,9 @@ class FirestoreService {
         'senderName': senderName,
         'senderApartment': senderApartment,
         'alertId': alertRef.id,
-      });
+      };
+      currentBatch.set(notifRef, notifData);
+      notifsToSync.add(notifData);
       opCount++;
     }
     batches.add(currentBatch);
@@ -435,6 +490,11 @@ class FirestoreService {
     // Commit all batches
     for (final batch in batches) {
       await batch.commit();
+    }
+
+    _mongoSync.syncCommunityAlert(alertData);
+    if (notifsToSync.isNotEmpty) {
+      _mongoSync.syncNotificationBatch(notifsToSync);
     }
 
     return alertRef.id;
@@ -457,10 +517,17 @@ class FirestoreService {
 
   Future<void> createLostFoundItem(LostFoundModel item) async {
     await _db.collection('lost_found').doc(item.id).set(item.toMap());
+    _mongoSync.syncLostFoundItem(item);
   }
 
   Future<void> updateLostFoundStatus(String itemId, String newStatus) async {
-    await _db.collection('lost_found').doc(itemId).update({'status': newStatus, 'isResolved': newStatus == 'Returned' || newStatus == 'Closed'});
+    final isResolved = newStatus == 'Returned' || newStatus == 'Closed';
+    await _db.collection('lost_found').doc(itemId).update({'status': newStatus, 'isResolved': isResolved});
+    _mongoSync.syncDocument(collection: 'lost_found', data: {
+      'id': itemId,
+      'status': newStatus,
+      'isResolved': isResolved,
+    });
   }
 
   /// Submit a claim or "I Found This" response on a Lost & Found item.
@@ -478,7 +545,8 @@ class FirestoreService {
 
     // Write the claim document
     final claimRef = _db.collection('lost_found_claims').doc();
-    batch.set(claimRef, {
+    final claimData = {
+      'id': claimRef.id,
       'itemId': itemId,
       'itemTitle': itemTitle,
       'itemOwnerId': itemOwnerId,
@@ -489,7 +557,8 @@ class FirestoreService {
       'claimType': claimType,
       'status': 'pending', // pending | accepted | rejected
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    };
+    batch.set(claimRef, claimData);
 
     // Mark the item as ClaimPending
     final itemRef = _db.collection('lost_found').doc(itemId);
@@ -498,7 +567,8 @@ class FirestoreService {
     // Notify the item owner
     final notifRef = _db.collection('notifications').doc();
     final isFoundTip = claimType == 'found_tip';
-    batch.set(notifRef, {
+    final notifData = {
+      'id': notifRef.id,
       'userId': itemOwnerId,
       'title': isFoundTip ? 'Someone May Have Found Your Item!' : 'New Claim on Your Found Item',
       'message': isFoundTip
@@ -509,9 +579,18 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
       'claimId': claimRef.id,
       'itemId': itemId,
-    });
+    };
+    batch.set(notifRef, notifData);
 
     await batch.commit();
+
+    _mongoSync.syncLostFoundClaim(claimData);
+    _mongoSync.syncDocument(collection: 'lost_found', data: {
+      'id': itemId,
+      'status': 'ClaimPending',
+      'isResolved': false,
+    });
+    _mongoSync.syncNotificationMap(notifData);
   }
 
   /// Owner accepts a claim — marks item Returned, notifies claimant.
@@ -525,7 +604,8 @@ class FirestoreService {
     batch.update(_db.collection('lost_found_claims').doc(claimId), {'status': 'accepted'});
     batch.update(_db.collection('lost_found').doc(itemId), {'status': 'Returned', 'isResolved': true});
     final notifRef = _db.collection('notifications').doc();
-    batch.set(notifRef, {
+    final notifData = {
+      'id': notifRef.id,
       'userId': claimantId,
       'title': 'Claim Accepted! 🎉',
       'message': 'Your claim for "$itemTitle" was accepted. Please coordinate with the owner.',
@@ -533,8 +613,13 @@ class FirestoreService {
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
       'itemId': itemId,
-    });
+    };
+    batch.set(notifRef, notifData);
     await batch.commit();
+
+    _mongoSync.syncDocument(collection: 'lost_found_claims', data: {'id': claimId, 'status': 'accepted'});
+    _mongoSync.syncDocument(collection: 'lost_found', data: {'id': itemId, 'status': 'Returned', 'isResolved': true});
+    _mongoSync.syncNotificationMap(notifData);
   }
 
   /// Owner rejects a claim — resets item to Active, notifies claimant.
@@ -548,7 +633,8 @@ class FirestoreService {
     batch.update(_db.collection('lost_found_claims').doc(claimId), {'status': 'rejected'});
     batch.update(_db.collection('lost_found').doc(itemId), {'status': 'Active'});
     final notifRef = _db.collection('notifications').doc();
-    batch.set(notifRef, {
+    final notifData = {
+      'id': notifRef.id,
       'userId': claimantId,
       'title': 'Claim Not Accepted',
       'message': 'Your claim for "$itemTitle" was not accepted. The item remains active.',
@@ -556,8 +642,13 @@ class FirestoreService {
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
       'itemId': itemId,
-    });
+    };
+    batch.set(notifRef, notifData);
     await batch.commit();
+
+    _mongoSync.syncDocument(collection: 'lost_found_claims', data: {'id': claimId, 'status': 'rejected'});
+    _mongoSync.syncDocument(collection: 'lost_found', data: {'id': itemId, 'status': 'Active'});
+    _mongoSync.syncNotificationMap(notifData);
   }
 
   /// Get pending claims for a specific Lost & Found item (owner use only)
@@ -614,6 +705,7 @@ class FirestoreService {
       createdAt: DateTime.now(),
     );
     await _db.collection('connection_requests').doc(requestId).set(request.toMap());
+    _mongoSync.syncConnectionRequest(request);
   }
 
   Future<void> acceptConnectionRequest(ConnectionRequestModel request) async {
@@ -634,10 +726,20 @@ class FirestoreService {
     );
     
     await _db.collection('connections').doc(connectionId).set(connection.toMap());
+
+    _mongoSync.syncDocument(collection: 'connection_requests', data: {
+      'id': request.id,
+      'status': 'accepted',
+    });
+    _mongoSync.syncConnection(connection);
   }
 
   Future<void> rejectConnectionRequest(String requestId) async {
     await _db.collection('connection_requests').doc(requestId).update({
+      'status': 'rejected',
+    });
+    _mongoSync.syncDocument(collection: 'connection_requests', data: {
+      'id': requestId,
       'status': 'rejected',
     });
   }
@@ -696,6 +798,7 @@ class FirestoreService {
     final ids = [currentUserId, otherUserId]..sort();
     final connectionId = '${ids[0]}_${ids[1]}';
     await _db.collection('connections').doc(connectionId).delete();
+    _mongoSync.deleteConnection(connectionId);
   }
 }
 

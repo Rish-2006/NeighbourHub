@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
+import '../../services/mongo_sync_service.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -61,7 +62,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      await FirebaseFirestore.instance.collection('reports').add({
+      final reportData = {
         'userId': user.uid,
         'userName': user.displayName ?? 'Unknown',
         'userEmail': user.email ?? 'Unknown',
@@ -71,6 +72,11 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         'imageUrl': '',
         'status': 'Pending',
         'createdAt': FieldValue.serverTimestamp(),
+      };
+      final docRef = await FirebaseFirestore.instance.collection('reports').add(reportData);
+      MongoSyncService.instance.syncReport({
+        ...reportData,
+        'id': docRef.id,
       });
 
       if (!mounted) return;

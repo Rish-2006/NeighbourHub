@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/mongo_sync_service.dart';
 import '../../theme/app_theme.dart';
 import 'admin_report_details_screen.dart';
 import 'create_announcement_screen.dart';
@@ -52,6 +53,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
+  bool _isSyncing = false;
+
+  Future<void> _performInitialSync() async {
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🔄 Starting full Firestore to MongoDB sync...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final results = await MongoSyncService.instance.syncAllFromFirestore();
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.darkCard,
+          title: const Text('MongoDB Synchronization Report', style: TextStyle(color: Colors.white, fontSize: 18)),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: results.entries.map((e) {
+                final val = e.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    '• ${e.key}: ${val is Map && val.containsKey('count') ? "${val['count']} documents synced" : val}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close', style: TextStyle(color: AppTheme.primaryColor)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,6 +129,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+                  )
+                : const Icon(Icons.sync),
+            tooltip: 'Sync Firestore to MongoDB',
+            onPressed: _isSyncing ? null : _performInitialSync,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',

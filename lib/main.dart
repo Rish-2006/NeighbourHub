@@ -13,6 +13,8 @@ import 'neighbour/theme/app_theme.dart';
 import 'neighbour/routes/app_routes.dart';
 import 'neighbour/services/auth_service.dart';
 import 'neighbour/services/firestore_service.dart';
+import 'neighbour/services/storage_service.dart';
+import 'neighbour/services/mongo_sync_service.dart';
 import 'neighbour/models/user_model.dart' as neighbour_model;
 
 import 'presentation/auth/screens/login_screen.dart';
@@ -51,7 +53,11 @@ void main() async {
           create: (_) => ThemeController(isDarkMode, prefs),
         ),
         ChangeNotifierProvider(create: (_) => AuthService()),
-        Provider(create: (_) => FirestoreService()),
+        Provider(create: (_) => MongoSyncService()),
+        ProxyProvider<MongoSyncService, FirestoreService>(
+          update: (_, mongoSync, __) => FirestoreService(mongoSync: mongoSync),
+        ),
+        Provider(create: (_) => StorageService()),
       ],
       child: const ProviderScope(child: NeighbourHubApp()),
     ),
@@ -137,16 +143,26 @@ class AuthWrapper extends StatelessWidget {
               }
 
               final firestoreService = context.read<FirestoreService>();
-              // Use merge:true so we don't overwrite custom fields like neighbourhood/bio
-              final userModel = neighbour_model.UserModel(
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName ?? 'Neighbour',
-                email: firebaseUser.email ?? '',
-                photoUrl: firebaseUser.photoURL ?? '',
-                neighbourhood: 'Green Valley Community',
-                createdAt: DateTime.now(),
-              );
-              firestoreService.saveUser(userModel);
+              final mongoSyncService = context.read<MongoSyncService>();
+
+              // Ensure user document exists in Firestore and sync to MongoDB in background
+              firestoreService.getUser(firebaseUser.uid).then((existingUser) {
+                if (existingUser != null) {
+                  mongoSyncService.syncUser(existingUser);
+                } else {
+                  final userModel = neighbour_model.UserModel(
+                    id: firebaseUser.uid,
+                    name: firebaseUser.displayName ?? 'Neighbour',
+                    email: firebaseUser.email ?? '',
+                    photoUrl: firebaseUser.photoURL ?? '',
+                    neighbourhood: 'Green Valley Community',
+                    createdAt: DateTime.now(),
+                  );
+                  firestoreService.saveUser(userModel).then((_) {
+                    mongoSyncService.syncUser(userModel);
+                  });
+                }
+              });
               return const HomeScreen();
             }
 

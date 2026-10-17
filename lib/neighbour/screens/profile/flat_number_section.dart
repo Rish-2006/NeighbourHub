@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/mongo_sync_service.dart';
 import '../../theme/app_theme.dart';
 
 const List<String> _blocks = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -95,21 +96,24 @@ class _FlatNumberSectionState extends State<FlatNumberSection> {
       }
 
       final reqRef = db.collection('flat_verification_requests').doc();
-      batch.set(reqRef, {
+      final reqData = {
+        'id': reqRef.id,
         'userId': user.uid,
         'userName': userName,
         'userEmail': userEmail,
         'flatNumber': flat,
         'status': 'Pending',
         'requestedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      batch.set(reqRef, reqData);
 
       // Update user document
-      batch.update(db.collection('users').doc(user.uid), {
+      final userUpdate = {
         'flatNumber': flat,
         'flatVerificationStatus': 'Pending',
         'flatVerificationRequestedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      batch.update(db.collection('users').doc(user.uid), userUpdate);
 
       // Notify admin via notifications collection
       final adminSnap = await db
@@ -123,7 +127,8 @@ class _FlatNumberSectionState extends State<FlatNumberSection> {
       }
 
       final notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
+      final notifData = {
+        'id': notifRef.id,
         'userId': adminId,
         'title': 'Flat Verification Request 🏠',
         'message': '$userName has requested verification for flat $flat.',
@@ -133,9 +138,19 @@ class _FlatNumberSectionState extends State<FlatNumberSection> {
         'requestingUserId': user.uid,
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      batch.set(notifRef, notifData);
 
       await batch.commit();
+
+      MongoSyncService.instance.syncFlatVerificationRequest(reqData);
+      MongoSyncService.instance.syncDocument(collection: 'users', data: {
+        'id': user.uid,
+        'flatNumber': flat,
+        'flatVerificationStatus': 'Pending',
+      });
+      MongoSyncService.instance.syncNotificationMap(notifData);
+
       _snack('Verification request submitted for flat $flat!');
     } catch (e) {
       _snack('Submission failed: $e', isError: true);

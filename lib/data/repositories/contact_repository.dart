@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/contact_model.dart';
+import '../../neighbour/services/mongo_sync_service.dart';
 
 class ContactRepository {
   final FirebaseFirestore _firestore;
@@ -64,12 +65,15 @@ class ContactRepository {
 
     try {
       final docId = contact.id.isEmpty ? const Uuid().v4() : contact.id;
+      final contactData = contact.toMap()..['id'] = docId;
       await _firestore
           .collection('users')
           .doc(userId)
           .collection('contacts')
           .doc(docId)
           .set(contact.toMap());
+
+      MongoSyncService.instance.syncContact(userId, contactData);
     } catch (e) {
       debugPrint('Adding contact in offline/mock mode: $e');
     }
@@ -85,6 +89,8 @@ class ContactRepository {
           .collection('contacts')
           .doc(contactId)
           .delete();
+
+      MongoSyncService.instance.deleteContact(userId, contactId);
     } catch (e) {
       debugPrint('Deleting contact in offline/mock mode: $e');
     }

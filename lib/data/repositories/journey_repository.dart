@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/journey_model.dart';
 import '../models/location_point.dart';
+import '../../neighbour/services/mongo_sync_service.dart';
 
 class JourneyRepository {
   final FirebaseFirestore _firestore;
@@ -151,6 +152,7 @@ class JourneyRepository {
     } catch (e) {
       debugPrint('Start journey fallback: $e');
     }
+    MongoSyncService.instance.syncJourney(journey.toMap());
     _activeMockJourney = journey;
     _activeJourneyController.add(journey);
     return journey;
@@ -161,13 +163,22 @@ class JourneyRepository {
     required LocationPoint location,
   }) async {
     try {
-      await _firestore
+      final docRef = await _firestore
           .collection('journeys')
           .doc(journeyId)
           .collection('locations')
           .add(location.toMap());
 
       await _firestore.collection('journeys').doc(journeyId).update({
+        'lastKnownLocation': location.toMap(),
+      });
+
+      MongoSyncService.instance.syncJourneyLocation(journeyId, {
+        ...location.toMap(),
+        'id': docRef.id,
+      });
+      MongoSyncService.instance.syncJourney({
+        'id': journeyId,
         'lastKnownLocation': location.toMap(),
       });
     } catch (e) {
@@ -188,6 +199,11 @@ class JourneyRepository {
         'isActive': false,
         'endTime': now.toIso8601String(),
       });
+      MongoSyncService.instance.syncJourney({
+        'id': journeyId,
+        'isActive': false,
+        'endTime': now.toIso8601String(),
+      });
     } catch (e) {
       debugPrint('End journey fallback: $e');
     }
@@ -205,6 +221,10 @@ class JourneyRepository {
   Future<void> setBatteryAlerted(String journeyId) async {
     try {
       await _firestore.collection('journeys').doc(journeyId).update({
+        'isBatteryAlerted': true,
+      });
+      MongoSyncService.instance.syncJourney({
+        'id': journeyId,
         'isBatteryAlerted': true,
       });
     } catch (e) {
@@ -257,6 +277,7 @@ class JourneyRepository {
           .set(pingData);
 
       await _firestore.collection('quickPings').doc(pingId).set(pingData);
+      MongoSyncService.instance.syncQuickPing(pingData);
     } catch (e) {
       debugPrint('Quick ping Firestore fallback: $e');
     }

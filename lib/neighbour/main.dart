@@ -11,6 +11,7 @@ import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
+import 'services/storage_service.dart';
 import 'models/user_model.dart';
 
 import 'screens/auth/login_screen.dart';
@@ -47,6 +48,7 @@ void main() async {
         ),
         ChangeNotifierProvider(create: (_) => AuthService()),
         Provider(create: (_) => FirestoreService()),
+        Provider(create: (_) => StorageService()),
       ],
       child: const NeighbourHubApp(),
     ),
@@ -126,16 +128,21 @@ class AuthWrapper extends StatelessWidget {
             if (snapshot.hasData && snapshot.data != null) {
               final firebaseUser = snapshot.data!;
               final firestoreService = context.read<FirestoreService>();
-              // Use merge:true so we don't overwrite custom fields like neighbourhood/bio
-              final userModel = UserModel(
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName ?? 'Neighbour',
-                email: firebaseUser.email ?? '',
-                photoUrl: firebaseUser.photoURL ?? '',
-                neighbourhood: 'Green Valley Community',
-                createdAt: DateTime.now(),
-              );
-              firestoreService.saveUser(userModel);
+              // Only create user profile if the document doesn't exist yet,
+              // so we never overwrite an existing profile image, bio, or apartment on login.
+              firestoreService.userExists(firebaseUser.uid).then((exists) {
+                if (!exists) {
+                  final userModel = UserModel(
+                    id: firebaseUser.uid,
+                    name: firebaseUser.displayName ?? 'Neighbour',
+                    email: firebaseUser.email ?? '',
+                    photoUrl: firebaseUser.photoURL ?? '',
+                    neighbourhood: 'Green Valley Community',
+                    createdAt: DateTime.now(),
+                  );
+                  firestoreService.saveUser(userModel);
+                }
+              });
               return const HomeScreen();
             }
 

@@ -72,11 +72,20 @@ class AuthService extends ChangeNotifier {
         createdAt: DateTime.now(),
       );
 
-      // Save user to Firestore so they appear in members list
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .set(userModel.toMap(), SetOptions(merge: true));
+      // Save user to Firestore if new, so they appear in members list without overwriting existing data
+      final docRef = FirebaseFirestore.instance.collection('users').doc(firebaseUser.uid);
+      final docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        await docRef.set(userModel.toMap(), SetOptions(merge: true));
+      } else {
+        // Doc exists: load existing model so caller gets their actual saved photoUrl & profile
+        final existingData = docSnap.data();
+        if (existingData != null) {
+          final existingModel = UserModel.fromMap(existingData, docSnap.id);
+          notifyListeners();
+          return (user: existingModel, error: null);
+        }
+      }
 
       notifyListeners(); // Tell the UI the auth state changed
       return (user: userModel, error: null);

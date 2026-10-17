@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
@@ -128,18 +129,60 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ── Avatar ──────────────────────────────────────────────────
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-                child: Text(
-                  widget.user.name.isNotEmpty
-                      ? widget.user.name[0].toUpperCase()
-                      : 'N',
-                  style: const TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    width: 2,
                   ),
+                ),
+                child: ClipOval(
+                  child: widget.user.photoUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: widget.user.photoUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Center(
+                            child: Text(
+                              widget.user.name.isNotEmpty
+                                  ? widget.user.name[0].toUpperCase()
+                                  : 'N',
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Text(
+                            widget.user.name.isNotEmpty
+                                ? widget.user.name[0].toUpperCase()
+                                : 'N',
+                            style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                 ),
               ).animate().fadeIn().scale(),
 
